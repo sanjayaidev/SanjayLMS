@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - LMS Platform</title>
+    <link rel="stylesheet" href="lms.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        .login-header p {
+            color: #666;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .cta-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .form-message {
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .form-message.error {
+            background: #fee;
+            color: #c00;
+        }
+        .form-message.success {
+            background: #efe;
+            color: #0a0;
+        }
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            color: #999;
+        }
+        .google-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: white;
+            color: #333;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: background 0.3s;
+        }
+        .google-btn:hover {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>📚 LMS Platform</h1>
+            <p>Welcome back! Please sign in.</p>
+        </div>
+
+        <div id="loginMessage"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="cta-button">Sign In</button>
+        </form>
+
+        <div class="divider">or</div>
+
+        <button id="googleLoginBtn" class="google-btn">
+            <span>G</span> Continue with Google
+        </button>
+
+        <p style="text-align: center; margin-top: 1.5rem; color: #666;">
+            Don't have an account? 
+            <a href="#" id="showSignup" style="color: #667eea; text-decoration: none;">Sign up</a>
+        </p>
+    </div>
+
+    <!-- Signup Modal (hidden by default) -->
+    <div id="signupContainer" class="login-container" style="display: none;">
+        <div class="login-header">
+            <h1>Create Account</h1>
+            <p>Join our learning community!</p>
+        </div>
+
+        <div id="signupMessage"></div>
+
+        <form id="signupForm">
+            <div class="form-group">
+                <label for="signupName">Full Name</label>
+                <input type="text" id="signupName" required placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label for="signupEmail">Email</label>
+                <input type="email" id="signupEmail" required placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label for="signupPassword">Password</label>
+                <input type="password" id="signupPassword" required placeholder="••••••••" minlength="6">
+            </div>
+            <button type="submit" class="cta-button">Create Account</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 1.5rem; color: #666;">
+            Already have an account? 
+            <a href="#" id="showLogin" style="color: #667eea; text-decoration: none;">Sign in</a>
+        </p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Configuration - Update with your Supabase credentials
+        const SUPABASE_URL = 'https://dawxhfdvozykhxkzpfbv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhd3hoZmR2b3p5a2h4a3pwZmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTgyMzAsImV4cCI6MjA5OTA5NDIzMH0.MiGLrpu3i-5u9hyQrdyBFm9J5pb689Oe21eUsKUjbyU';
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Check if already logged in
+        async function checkAuth() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) {
+                showMessage('loginMessage', error.message, 'error');
+            } else {
+                showMessage('loginMessage', 'Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            }
+        });
+
+        // Signup form handler
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: name
+                    }
+                }
+            });
+
+            if (error) {
+                showMessage('signupMessage', error.message, 'error');
+            } else {
+                showMessage('signupMessage', 'Account created! Please check your email to verify.', 'success');
+            }
+        });
+
+        // Google login
+        document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+            const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/index.html'
+                }
+            });
+
+            if (error) {
+                showMessage('loginMessage', error.message, 'error');
+            }
+        });
+
+        // Toggle between login and signup
+        document.getElementById('showSignup').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelector('.login-container').style.display = 'none';
+            document.getElementById('signupContainer').style.display = 'block';
+        });
+
+        document.getElementById('showLogin').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('signupContainer').style.display = 'none';
+            document.querySelector('.login-container').style.display = 'block';
+        });
+
+        // Show message helper
+        function showMessage(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="form-message ${type}">${message}</div>`;
+            setTimeout(() => {
+                el.innerHTML = '';
+            }, 5000);
+        }
+
+        // Check auth on load
+        checkAuth();
+
+        // Update logout button if exists
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                await supabaseClient.auth.signOut();
+                window.location.href = 'login.html';
+            });
+        }
+    </script>
+</body>
+</html>

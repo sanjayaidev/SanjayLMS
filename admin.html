@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" sizes="32x32" href="images/logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Godot 3D MP LMS</title>
+    <link rel="stylesheet" href="lms.css">
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="admin.js" defer></script>
+</head>
+<body class="admin-page">
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">GODOT 3D MP - ADMIN</div>
+                
+                <!-- Desktop Navigation -->
+                <div class="nav-links">
+                    <a href="#dashboard" onclick="showSection('dashboard')">Dashboard</a>
+                    <a href="#courses" onclick="showSection('courses')">Courses</a>
+                    <a href="#students" onclick="showSection('students')">Students</a>
+                </div>
+                
+                <!-- Admin User Menu -->
+                <div class="user-menu">
+                    <span id="adminEmail" class="user-email"></span>
+                    <button id="adminLogoutBtn" class="cta-button logout-btn">Logout</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+            </nav>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div class="mobile-menu" id="mobileMenu">
+            <div class="mobile-menu-header">
+                <div class="mobile-menu-logo">GODOT 3D MP - ADMIN</div>
+                <button class="mobile-close-btn" id="mobileCloseBtn">✕</button>
+            </div>
+            
+            <div class="mobile-nav-links">
+                <a href="#dashboard" onclick="showSection('dashboard'); closeMobileMenu();">Dashboard</a>
+                <a href="#courses" onclick="showSection('courses'); closeMobileMenu();">Courses</a>
+                <a href="#students" onclick="showSection('students'); closeMobileMenu();">Students</a>
+                
+                <!-- Mobile User Info -->
+                <div class="mobile-user-menu">
+                    <div class="mobile-user-email" id="mobileAdminEmail"></div>
+                    <button class="mobile-logout-btn" id="mobileAdminLogoutBtn">Logout</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+    </header>
+    <div id="sanjay-header"></div>
+    <!-- Admin Dashboard -->
+    <section id="dashboard" class="admin-dashboard">
+        <div class="container">
+            <div class="admin-header">
+                <h1>Admin Dashboard</h1>
+                <p>Welcome to the Godot 3D MP LMS Admin Panel</p>
+            </div>
+
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <h3>Total Students</h3>
+                    <span id="totalStudents" class="stat-number">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Courses</h3>
+                    <span id="totalCourses" class="stat-number">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Courses</h3>
+                    <span id="activeCourses" class="stat-number">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Modules</h3>
+                    <span id="totalModules" class="stat-number">0</span>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <h2>Quick Actions</h2>
+                <div class="action-grid">
+                    <button class="action-btn" onclick="showSection('courses')">
+                        <span class="action-icon">📚</span>
+                        <span>Manage Courses</span>
+                    </button>
+                    <button class="action-btn" onclick="showSection('students')">
+                        <span class="action-icon">👥</span>
+                        <span>View Students</span>
+                    </button>
+                    <button class="action-btn" onclick="adminPanel.openCourseModal()">
+                        <span class="action-icon">➕</span>
+                        <span>Add New Course</span>
+                    </button>
+                </div>
+            </div>
+    <!-- Courses Management -->
+    <section id="courses" class="admin-section" style="display: none;">
+        <div class="container">
+            <div class="section-header">
+                <h2>Course Management</h2>
+                <div class="header-actions">
+                    <div class="search-box">
+                        <input type="text" id="courseSearch" placeholder="Search courses..." onkeyup="adminPanel.searchCourses(this.value)">
+                    </div>
+                    <button class="cta-button" onclick="adminPanel.openCourseModal()">
+                        <span class="action-icon">➕</span>
+                        Add New Course
+                    </button>
+                </div>
+            </div>
+
+            <!-- Courses Filter - UPDATED: Free changed to Basic -->
+            <div class="courses-filter">
+                <button class="filter-btn active" onclick="adminPanel.filterCourses('all')">All</button>
+                <button class="filter-btn" onclick="adminPanel.filterCourses('active')">Active</button>
+                <button class="filter-btn" onclick="adminPanel.filterCourses('inactive')">Inactive</button>
+                <button class="filter-btn" onclick="adminPanel.filterCourses('basic')">Basic</button>
+                <button class="filter-btn" onclick="adminPanel.filterCourses('premium')">Premium</button>
+            </div>
+
+            <!-- Courses List -->
+            <div class="courses-list" id="adminCoursesList">
+                <div class="loading-message">Loading courses...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Students Management -->
+    <section id="students" class="admin-section" style="display: none;">
+        <div class="container">
+            <div class="section-header">
+                <h2>Student Management</h2>
+                <div class="search-box">
+                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="adminPanel.searchStudents(this.value)">
+                </div>
+            </div>
+
+            <div class="students-list" id="studentsList">
+                <div class="placeholder-message">
+                    <p>Student data will appear here once users start signing up.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Course Modal -->
+    <div id="courseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="courseModalTitle">Add New Course</h3>
+                <button class="close-btn" onclick="adminPanel.closeCourseModal()">✕</button>
+            </div>
+            <form id="courseForm" class="modal-form">
+                <input type="hidden" id="courseId" value="">
+                
+                <div class="form-group">
+                    <label for="courseTitle">Course Title *</label>
+                    <input type="text" id="courseTitle" required placeholder="Enter course title">
+                </div>
+                
+                <div class="form-group">
+                    <label for="courseDescription">Description *</label>
+                    <textarea id="courseDescription" rows="4" required placeholder="Enter course description"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="courseTier">Required Tier *</label>
+                        <!-- UPDATED: Free removed, Basic is now the entry level -->
+                        <select id="courseTier" required>
+                            <option value="basic">Basic</option>
+                            <option value="premium">Premium</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="coursePrice">Price ($) *</label>
+                        <input type="number" id="coursePrice" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="courseStatus">Status</label>
+                        <select id="courseStatus">
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="courseActive" checked>
+                            <span class="checkmark"></span>
+                            Active Course
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="adminPanel.closeCourseModal()">Cancel</button>
+                    <button type="submit" class="cta-button" id="courseSubmitBtn">
+                        <span class="btn-text">Create Course</span>
+                        <span class="btn-loading" style="display: none;">Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Module Modal -->
+    <div id="moduleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="moduleModalTitle">Add New Module</h3>
+                <button class="close-btn" onclick="adminPanel.closeModuleModal()">✕</button>
+            </div>
+            <form id="moduleForm" class="modal-form">
+                <input type="hidden" id="moduleId" value="">
+                <input type="hidden" id="moduleCourseId" value="">
+                
+                <div class="form-group">
+                    <label for="moduleTitle">Module Title *</label>
+                    <input type="text" id="moduleTitle" required placeholder="Enter module title">
+                </div>
+                
+                <div class="form-group">
+                    <label for="moduleDescription">Description *</label>
+                    <textarea id="moduleDescription" rows="3" required placeholder="Enter module description"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="moduleOrder">Order *</label>
+                        <input type="number" id="moduleOrder" min="1" required placeholder="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="moduleDuration">Duration</label>
+                        <input type="text" id="moduleDuration" placeholder="e.g., 15 min">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="moduleVideoUrl">Video URL (Mux)</label>
+                        <input type="url" id="moduleVideoUrl" placeholder="https://mux.com/...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="moduleTier">Required Tier</label>
+                        <!-- UPDATED: Free removed, Basic is now the entry level -->
+                        <select id="moduleTier">
+                            <option value="basic">Basic</option>
+                            <option value="premium">Premium</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="moduleIsPremium">
+                        <span class="checkmark"></span>
+                        Premium Content (Requires premium tier)
+                    </label>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="adminPanel.closeModuleModal()">Cancel</button>
+                    <button type="submit" class="cta-button" id="moduleSubmitBtn">
+                        <span class="btn-text">Save Module</span>
+                        <span class="btn-loading" style="display: none;">Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Course Modules View -->
+    <div id="modulesView" class="modal large-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modulesViewTitle">Course Modules</h3>
+                <button class="close-btn" onclick="adminPanel.closeModulesView()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="modules-view-header">
+                    <div class="course-info">
+                        <h4 id="modulesCourseTitle"></h4>
+                        <p id="modulesCourseDescription"></p>
+                    </div>
+                    <button class="cta-button" onclick="adminPanel.openModuleModal(adminPanel.currentCourseId)">
+                        <span class="action-icon">➕</span>
+                        Add Module
+                    </button>
+                </div>
+                
+                <div class="modules-list" id="modulesListView">
+                    <div class="loading-message">Loading modules...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirmModalTitle">Confirm Action</h3>
+                <button class="close-btn" onclick="adminPanel.closeConfirmModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage">Are you sure you want to perform this action?</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="adminPanel.closeConfirmModal()">Cancel</button>
+                    <button type="button" class="cta-button btn-danger" id="confirmActionBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Display -->
+    <div id="adminMessage" class="form-message" style="display: none;"></div>
+
+    <script src="admin.js"></script>
+<div id="sanjay-footer"></div>
+</body>
+</html>
