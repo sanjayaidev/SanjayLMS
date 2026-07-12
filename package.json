@@ -1,0 +1,20 @@
+{
+  "name": "lms-platform",
+  "version": "1.0.0",
+  "description": "Learning Management System with tier-based access control",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site - no build required'",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "lms",
+    "education",
+    "learning"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
