@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Courses - LMS Platform</title>
+    <link rel="stylesheet" href="lms.css">
+    <style>
+        .courses-header {
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .courses-header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.5rem;
+        }
+
+        .courses-header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            padding: 0 2rem 2rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+        }
+
+        .filter-bar input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .sort-options {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .sort-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sort-btn.active,
+        .sort-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #666;
+        }
+
+        .empty-state h2 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .empty-state p {
+            margin-bottom: 2rem;
+        }
+
+        .back-to-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .back-to-home:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .courses-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-bar input[type="text"] {
+                width: 100%;
+            }
+
+            .sort-options {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Required Screen -->
+    <div id="authRequired" class="auth-container">
+        <div class="auth-card">
+            <h2>🔐 Authentication Required</h2>
+            <p>Please log in to view your courses.</p>
+            <a href="login.html" class="cta-button">Go to Login</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>📚 LMS Platform</h1>
+                </div>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail">Loading...</span>
+                    <span class="user-tier" id="currentTier">Basic</span>
+                    <button id="logoutBtn" class="btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Header -->
+        <div class="courses-header">
+            <h1>My Courses</h1>
+            <p>Access all your purchased and enrolled courses</p>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" id="searchInput" placeholder="Search courses..." />
+            <select id="tierFilter">
+                <option value="">All Tiers</option>
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+            </select>
+            <div class="sort-options">
+                <button class="sort-btn active" data-sort="recent">Recent</button>
+                <button class="sort-btn" data-sort="progress">Progress</button>
+                <button class="sort-btn" data-sort="alphabetical">A-Z</button>
+            </div>
+        </div>
+
+        <!-- Courses Grid -->
+        <main class="main-content">
+            <div id="coursesContainer" class="courses-grid">
+                <!-- Courses will be rendered here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <h2>No courses yet!</h2>
+                <p>You haven't purchased any courses yet. Browse our catalog to get started.</p>
+                <a href="index.html" class="back-to-home">Browse Courses →</a>
+            </div>
+        </main>
+    </div>
+
+    <!-- Load Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="router.js"></script>
+    <script>
+        // Backend Configuration
+        window.LMS_CONFIG = {
+            SUPABASE_URL: 'https://dawxhfdvozykhxkzpfbv.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhd3hoZmR2b3p5a2h4a3pwZmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTgyMzAsImV4cCI6MjA5OTA5NDIzMH0.MiGLrpu3i-5u9hyQrdyBFm9J5pb689Oe21eUsKUjbyU',
+            API_BASE_URL: '/api',
+            USE_PRISMA_API: false
+        };
+
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            window.LMS_CONFIG.SUPABASE_URL,
+            window.LMS_CONFIG.SUPABASE_ANON_KEY
+        );
+        window.supabase = supabase;
+
+        // My Courses Page Manager
+        class MyCoursesPage {
+            constructor() {
+                this.currentUser = null;
+                this.userProfile = null;
+                this.myCourses = [];
+                this.courseDetails = {};
+                this.filteredCourses = [];
+                this.currentSort = 'recent';
+                
+                this.init();
+            }
+
+            async init() {
+                await this.checkAuth();
+                this.setupEventListeners();
+            }
+
+            async checkAuth() {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!session) {
+                    document.getElementById('authRequired').style.display = 'block';
+                    document.getElementById('mainContent').style.display = 'none';
+                    return;
+                }
+
+                this.currentUser = session.user;
+                document.getElementById('authRequired').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                
+                document.getElementById('userEmail').textContent = session.user.email;
+                
+                await this.loadUserProfile();
+                await this.loadMyCourses();
+                this.renderCourses();
+            }
+
+            async loadUserProfile() {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', this.currentUser.id)
+                    .single();
+                
+                if (data) {
+                    this.userProfile = data;
+                    document.getElementById('currentTier').textContent = data.subscription_tier || 'basic';
+                }
+            }
+
+            async loadMyCourses() {
+                const { data } = await supabase
+                    .from('user_courses')
+                    .select('*')
+                    .eq('user_id', this.currentUser.id)
+                    .eq('payment_status', 'completed');
+
+                this.myCourses = data || [];
+
+                // Load course details for each
+                for (const uc of this.myCourses) {
+                    const { data: course } = await supabase
+                        .from('courses')
+                        .select('*')
+                        .eq('id', uc.course_id)
+                        .single();
+                    
+                    if (course) {
+                        this.courseDetails[uc.course_id] = course;
+                    }
+                }
+
+                this.filteredCourses = [...this.myCourses];
+            }
+
+            setupEventListeners() {
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+                
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    this.filterCourses();
+                });
+
+                document.getElementById('tierFilter').addEventListener('change', () => {
+                    this.filterCourses();
+                });
+
+                document.querySelectorAll('.sort-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentSort = e.target.dataset.sort;
+                        this.sortCourses();
+                    });
+                });
+            }
+
+            filterCourses() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const tierFilter = document.getElementById('tierFilter').value;
+
+                this.filteredCourses = this.myCourses.filter(uc => {
+                    const course = this.courseDetails[uc.course_id];
+                    if (!course) return false;
+
+                    const matchesSearch = course.title.toLowerCase().includes(searchTerm) ||
+                                         course.description.toLowerCase().includes(searchTerm);
+                    
+                    const matchesTier = !tierFilter || course.required_tier === tierFilter;
+
+                    return matchesSearch && matchesTier;
+                });
+
+                this.sortCourses();
+                this.renderCourses();
+            }
+
+            sortCourses() {
+                switch (this.currentSort) {
+                    case 'recent':
+                        this.filteredCourses.sort((a, b) => 
+                            new Date(b.created_at) - new Date(a.created_at)
+                        );
+                        break;
+                    case 'progress':
+                        this.filteredCourses.sort((a, b) => 
+                            (b.progress || 0) - (a.progress || 0)
+                        );
+                        break;
+                    case 'alphabetical':
+                        this.filteredCourses.sort((a, b) => {
+                            const courseA = this.courseDetails[a.course_id];
+                            const courseB = this.courseDetails[b.course_id];
+                            return (courseA?.title || '').localeCompare(courseB?.title || '');
+                        });
+                        break;
+                }
+            }
+
+            renderCourses() {
+                const container = document.getElementById('coursesContainer');
+                const emptyState = document.getElementById('emptyState');
+
+                if (this.filteredCourses.length === 0) {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                container.style.display = 'grid';
+                emptyState.style.display = 'none';
+
+                container.innerHTML = this.filteredCourses.map(uc => {
+                    const course = this.courseDetails[uc.course_id];
+                    if (!course) return '';
+
+                    const progress = uc.progress || 0;
+                    
+                    return `
+                        <div class="course-card unlocked">
+                            <div class="access-badge">✅ Enrolled</div>
+                            <h3>${course.title}</h3>
+                            <p>${course.description.substring(0, 100)}${course.description.length > 100 ? '...' : ''}</p>
+                            <div class="course-meta">
+                                <span class="course-tier">${course.required_tier.toUpperCase()} TIER</span>
+                                <span class="progress-badge">${progress}% Complete</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                            <div class="course-actions">
+                                <button class="cta-button" onclick="window.lmsRouter.goToCourse('${course.id}')">
+                                    ${progress > 0 ? 'Continue Learning' : 'Start Course'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            async logout() {
+                await supabase.auth.signOut();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            window.myCoursesPage = new MyCoursesPage();
+        });
+    </script>
+</body>
+</html>
