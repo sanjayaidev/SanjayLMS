@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details - LMS Platform</title>
+    <link rel="stylesheet" href="lms.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@latest"></script>
+    <style>
+        .course-detail-page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .breadcrumb {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: #999;
+        }
+
+        .course-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+        }
+
+        .course-hero h1 {
+            margin: 0 0 1rem 0;
+            font-size: 2.5rem;
+        }
+
+        .course-hero p {
+            margin: 0 0 1.5rem 0;
+            opacity: 0.95;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .course-meta-hero {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+
+        .content-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .modules-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
+        }
+
+        .panel-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #333;
+        }
+
+        .modules-list {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+        .module-item {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .module-item:hover {
+            background: #f8f9fa;
+        }
+
+        .module-item.active {
+            background: #eef2ff;
+            border-left: 4px solid #667eea;
+        }
+
+        .module-item.completed {
+            background: #f0fff4;
+        }
+
+        .module-item.locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #fafafa;
+        }
+
+        .module-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .module-item.completed .module-number {
+            background: #10b981;
+        }
+
+        .module-item.locked .module-number {
+            background: #ccc;
+        }
+
+        .module-content {
+            flex: 1;
+        }
+
+        .module-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .module-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
+        }
+
+        .module-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .module-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-available {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-locked {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .info-card h4 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .downloads-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .download-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .download-item:last-child {
+            border-bottom: none;
+        }
+
+        .download-icon {
+            width: 40px;
+            height: 40px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .download-info {
+            flex: 1;
+        }
+
+        .download-name {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .download-type {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .download-btn {
+            padding: 0.5rem 1rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .download-btn:hover {
+            background: #5568d3;
+        }
+
+        .download-btn.disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #666;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1024px) {
+            .content-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                order: -1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Required Screen -->
+    <div id="authRequired" class="auth-container">
+        <div class="auth-card">
+            <h2>🔐 Authentication Required</h2>
+            <p>Please log in to access course details.</p>
+            <a href="login.html" class="cta-button">Go to Login</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>📚 LMS Platform</h1>
+                </div>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail">Loading...</span>
+                    <span class="user-tier" id="currentTier">Basic</span>
+                    <button id="logoutBtn" class="btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Course Detail Page -->
+        <div class="course-detail-page">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <a href="index.html">Home</a>
+                <span>/</span>
+                <a href="my-courses.html">My Courses</a>
+                <span>/</span>
+                <span id="breadcrumbCourseTitle">Course</span>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading course details...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" style="display: none; text-align: center; padding: 4rem 2rem;">
+                <h2>⚠️ Course Not Found</h2>
+                <p>This course doesn't exist or you don't have access.</p>
+                <a href="my-courses.html" class="back-to-home">Back to My Courses</a>
+            </div>
+
+            <!-- Course Content -->
+            <div id="courseContent" style="display: none;">
+                <!-- Hero Section -->
+                <div class="course-hero">
+                    <h1 id="courseTitle">Course Title</h1>
+                    <p id="courseDescription">Course description will appear here.</p>
+                    <div class="course-meta-hero">
+                        <div class="meta-item">
+                            <span>📊</span>
+                            <span id="moduleCount">0 Modules</span>
+                        </div>
+                        <div class="meta-item">
+                            <span>🎯</span>
+                            <span id="courseTier">Basic Tier</span>
+                        </div>
+                        <div class="meta-item">
+                            <span>📈</span>
+                            <span id="courseProgress">0% Complete</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Layout -->
+                <div class="content-layout">
+                    <!-- Modules Panel -->
+                    <div class="modules-panel">
+                        <div class="panel-header">
+                            <h3>📚 Course Modules</h3>
+                        </div>
+                        <div id="modulesList" class="modules-list">
+                            <!-- Modules will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Sidebar -->
+                    <div class="sidebar">
+                        <!-- Downloads Card -->
+                        <div class="info-card">
+                            <h4>📥 Downloadable Resources</h4>
+                            <ul id="downloadsList" class="downloads-list">
+                                <!-- Downloads will be rendered here -->
+                            </ul>
+                        </div>
+
+                        <!-- Course Info Card -->
+                        <div class="info-card">
+                            <h4>ℹ️ Course Information</h4>
+                            <div style="font-size: 0.9rem; color: #666; line-height: 1.8;">
+                                <div><strong>Instructor:</strong> <span id="instructorName">-</span></div>
+                                <div><strong>Duration:</strong> <span id="totalDuration">-</span></div>
+                                <div><strong>Level:</strong> <span id="courseLevel">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="router.js"></script>
+    <script>
+        // Backend Configuration
+        window.LMS_CONFIG = {
+            SUPABASE_URL: 'https://dawxhfdvozykhxkzpfbv.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhd3hoZmR2b3p5a2h4a3pwZmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTgyMzAsImV4cCI6MjA5OTA5NDIzMH0.MiGLrpu3i-5u9hyQrdyBFm9J5pb689Oe21eUsKUjbyU',
+            API_BASE_URL: '/api',
+            USE_PRISMA_API: false
+        };
+
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            window.LMS_CONFIG.SUPABASE_URL,
+            window.LMS_CONFIG.SUPABASE_ANON_KEY
+        );
+        window.supabase = supabase;
+
+        // Course Detail Page Manager
+        class CourseDetailPage {
+            constructor() {
+                this.currentUser = null;
+                this.userProfile = null;
+                this.course = null;
+                this.modules = [];
+                this.downloads = [];
+                this.userProgress = {};
+                this.courseId = null;
+                
+                this.init();
+            }
+
+            async init() {
+                await this.checkAuth();
+                this.setupEventListeners();
+                
+                // Listen for route changes
+                window.addEventListener('routeChanged', (e) => {
+                    if (e.detail.params.page === 'course-detail') {
+                        this.loadCourse(e.detail.params.courseId);
+                    }
+                });
+
+                // Get course ID from URL or query param
+                const urlParams = new URLSearchParams(window.location.search);
+                const courseId = urlParams.get('id') || window.lmsRouter?.currentParams?.courseId;
+                
+                if (courseId && this.currentUser) {
+                    this.loadCourse(courseId);
+                }
+            }
+
+            async checkAuth() {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!session) {
+                    document.getElementById('authRequired').style.display = 'block';
+                    document.getElementById('mainContent').style.display = 'none';
+                    return;
+                }
+
+                this.currentUser = session.user;
+                document.getElementById('authRequired').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                
+                document.getElementById('userEmail').textContent = session.user.email;
+                
+                await this.loadUserProfile();
+            }
+
+            async loadUserProfile() {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', this.currentUser.id)
+                    .single();
+                
+                if (data) {
+                    this.userProfile = data;
+                    document.getElementById('currentTier').textContent = data.subscription_tier || 'basic';
+                }
+            }
+
+            async loadCourse(courseId) {
+                this.courseId = courseId;
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('courseContent').style.display = 'none';
+                document.getElementById('errorState').style.display = 'none';
+
+                // Check if user has access
+                const { data: userCourse } = await supabase
+                    .from('user_courses')
+                    .select('*')
+                    .eq('user_id', this.currentUser.id)
+                    .eq('course_id', courseId)
+                    .eq('payment_status', 'completed')
+                    .single();
+
+                if (!userCourse) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('errorState').style.display = 'block';
+                    return;
+                }
+
+                // Load course details
+                const { data: course } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .eq('id', courseId)
+                    .single();
+
+                if (!course) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('errorState').style.display = 'block';
+                    return;
+                }
+
+                this.course = course;
+                
+                // Load modules
+                const { data: modules } = await supabase
+                    .from('course_modules')
+                    .select('*')
+                    .eq('course_id', courseId)
+                    .order('module_order');
+
+                this.modules = modules || [];
+
+                // Load downloads
+                const { data: downloads } = await supabase
+                    .from('course_downloads')
+                    .select('*')
+                    .eq('course_id', courseId)
+                    .order('created_at');
+
+                this.downloads = downloads || [];
+
+                // Load user progress
+                const { data: progress } = await supabase
+                    .from('user_progress')
+                    .select('*')
+                    .eq('user_id', this.currentUser.id);
+
+                this.userProgress = {};
+                progress?.forEach(p => {
+                    this.userProgress[p.module_id] = p;
+                });
+
+                this.renderCourse();
+                
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('courseContent').style.display = 'block';
+            }
+
+            renderCourse() {
+                document.getElementById('breadcrumbCourseTitle').textContent = this.course.title;
+                document.getElementById('courseTitle').textContent = this.course.title;
+                document.getElementById('courseDescription').textContent = this.course.description;
+                document.getElementById('moduleCount').textContent = `${this.modules.length} Modules`;
+                document.getElementById('courseTier').textContent = `${this.course.required_tier.toUpperCase()} Tier`;
+                
+                const progress = this.calculateProgress();
+                document.getElementById('courseProgress').textContent = `${progress}% Complete`;
+                
+                document.getElementById('instructorName').textContent = this.course.instructor_name || 'Not specified';
+                document.getElementById('totalDuration').textContent = this.calculateTotalDuration();
+                document.getElementById('courseLevel').textContent = this.course.level || 'All Levels';
+
+                this.renderModules();
+                this.renderDownloads();
+            }
+
+            calculateProgress() {
+                if (this.modules.length === 0) return 0;
+                const completedCount = Object.keys(this.userProgress).filter(
+                    moduleId => this.modules.some(m => m.id === moduleId)
+                ).length;
+                return Math.round((completedCount / this.modules.length) * 100);
+            }
+
+            calculateTotalDuration() {
+                // Simple duration calculation - adjust based on your data format
+                return this.modules.reduce((acc, m) => acc + (parseInt(m.duration) || 0), 0) + ' min';
+            }
+
+            hasModuleAccess(module) {
+                const tierLevel = { 'basic': 1, 'premium': 2 };
+                const userTierLevel = tierLevel[this.userProfile?.subscription_tier] || 1;
+                const moduleTierLevel = tierLevel[module.required_tier] || 1;
+                
+                return userTierLevel >= moduleTierLevel;
+            }
+
+            renderModules() {
+                const container = document.getElementById('modulesList');
+                
+                container.innerHTML = this.modules.map((module, index) => {
+                    const hasAccess = this.hasModuleAccess(module);
+                    const isCompleted = !!this.userProgress[module.id];
+                    
+                    let statusClass = 'status-available';
+                    let statusText = 'Available';
+                    
+                    if (!hasAccess) {
+                        statusClass = 'status-locked';
+                        statusText = 'Locked';
+                    } else if (isCompleted) {
+                        statusClass = 'status-completed';
+                        statusText = 'Completed';
+                    }
+
+                    return `
+                        <div class="module-item ${isCompleted ? 'completed' : ''} ${!hasAccess ? 'locked' : ''}" 
+                             onclick="${hasAccess ? `window.lmsRouter.goToVideo('${this.course.id}', '${module.id}')` : ''}">
+                            <div class="module-number">${isCompleted ? '✓' : (index + 1)}</div>
+                            <div class="module-content">
+                                <div class="module-title">${module.title} ${!hasAccess ? '🔒' : ''}</div>
+                                <div class="module-description">${module.description || 'No description'}</div>
+                                <div class="module-meta">
+                                    <span>⏱️ ${module.duration || 'N/A'} min</span>
+                                    <span>🎯 ${module.required_tier}</span>
+                                </div>
+                            </div>
+                            <span class="module-status ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            hasDownloadAccess(download) {
+                if (!download.is_premium) return true;
+                return this.userProfile?.subscription_tier === 'premium';
+            }
+
+            renderDownloads() {
+                const container = document.getElementById('downloadsList');
+                
+                if (this.downloads.length === 0) {
+                    container.innerHTML = '<li style="color: #888; padding: 1rem 0;">No downloadable resources available.</li>';
+                    return;
+                }
+
+                container.innerHTML = this.downloads.map(download => {
+                    const hasAccess = this.hasDownloadAccess(download);
+                    
+                    return `
+                        <li class="download-item">
+                            <div class="download-icon">📄</div>
+                            <div class="download-info">
+                                <div class="download-name">${download.name}</div>
+                                <div class="download-type">${download.file_type || 'PDF'}</div>
+                            </div>
+                            ${hasAccess ? 
+                                `<button class="download-btn" onclick="window.open('${download.file_url}', '_blank')">Download</button>` :
+                                `<button class="download-btn disabled">Premium</button>`
+                            }
+                        </li>
+                    `;
+                }).join('');
+            }
+
+            setupEventListeners() {
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+            }
+
+            async logout() {
+                await supabase.auth.signOut();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            window.courseDetailPage = new CourseDetailPage();
+        });
+    </script>
+</body>
+</html>

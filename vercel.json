@@ -21,6 +21,26 @@
       "dest": "/api-routes.js"
     },
     {
+      "src": "^/my-courses/?$",
+      "dest": "/my-courses.html"
+    },
+    {
+      "src": "^/course/([^/]+)/?$",
+      "dest": "/course-detail.html"
+    },
+    {
+      "src": "^/video/([^/]+)/([^/]+)/?$",
+      "dest": "/video-view.html"
+    },
+    {
+      "src": "^/login/?$",
+      "dest": "/login.html"
+    },
+    {
+      "src": "^/admin/?$",
+      "dest": "/admin.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }

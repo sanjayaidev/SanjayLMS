@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Video - LMS Platform</title>
+    <link rel="stylesheet" href="lms.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@latest"></script>
+    <style>
+        .video-page-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 80px);
+        }
+
+        .video-main-section {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            position: relative;
+        }
+
+        mux-player {
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-info-panel {
+            padding: 2rem;
+        }
+
+        .video-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .video-title {
+            font-size: 1.8rem;
+            margin: 0 0 0.75rem 0;
+            color: #333;
+        }
+
+        .video-description {
+            color: #666;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .video-meta {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .meta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .video-controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .complete-btn {
+            padding: 0.75rem 2rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .complete-btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .complete-btn.completed {
+            background: #ccc;
+            cursor: default;
+        }
+
+        .sidebar-panel {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 100px);
+        }
+
+        .course-list-header {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .course-list-header h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.2rem;
+        }
+
+        .course-list-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .module-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .module-list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .module-list-item:hover {
+            background: #f8f9fa;
+        }
+
+        .module-list-item.active {
+            background: #eef2ff;
+            border-left: 4px solid #667eea;
+        }
+
+        .module-list-item.completed {
+            background: #f0fff4;
+        }
+
+        .module-list-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .module-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+        }
+
+        .module-list-item.completed .module-check {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .module-list-item.active .module-check {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .module-list-item.locked .module-check {
+            border-color: #ccc;
+        }
+
+        .module-list-content {
+            flex: 1;
+        }
+
+        .module-list-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+            color: #333;
+        }
+
+        .module-list-duration {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .loading-video {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            background: #000;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .access-denied {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .access-denied h2 {
+            color: #dc2626;
+            margin-bottom: 1rem;
+        }
+
+        .access-denied p {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .video-page-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar-panel {
+                max-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Required Screen -->
+    <div id="authRequired" class="auth-container">
+        <div class="auth-card">
+            <h2>🔐 Authentication Required</h2>
+            <p>Please log in to watch videos.</p>
+            <a href="login.html" class="cta-button">Go to Login</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>📚 LMS Platform</h1>
+                </div>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail">Loading...</span>
+                    <button id="logoutBtn" class="btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Video Page Layout -->
+        <div class="video-page-layout">
+            <!-- Main Video Section -->
+            <div class="video-main-section">
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-video">
+                    <div class="spinner"></div>
+                    <span>Loading video...</span>
+                </div>
+
+                <!-- Access Denied State -->
+                <div id="accessDenied" class="access-denied" style="display: none;">
+                    <h2>🔒 Access Denied</h2>
+                    <p>You don't have permission to view this content.</p>
+                    <a href="my-courses.html" class="cta-button">Back to My Courses</a>
+                </div>
+
+                <!-- Video Content -->
+                <div id="videoContent" style="display: none;">
+                    <div class="video-container">
+                        <mux-player id="muxPlayer" stream-type="on-demand" controls></mux-player>
+                    </div>
+
+                    <div class="video-info-panel">
+                        <div class="video-header">
+                            <h1 class="video-title" id="videoTitle">Video Title</h1>
+                            <p class="video-description" id="videoDescription">Video description will appear here.</p>
+                            <div class="video-meta">
+                                <span class="meta-badge">⏱️ <span id="videoDuration">--:--</span></span>
+                                <span class="meta-badge">🎯 <span id="videoTier">Basic</span></span>
+                                <span class="meta-badge">📊 Module <span id="moduleNumber">1</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="video-controls-bar">
+                        <button id="prevBtn" class="nav-btn" onclick="videoPage.navigateToPrevious()">
+                            ← Previous
+                        </button>
+                        <button id="completeBtn" class="complete-btn" onclick="videoPage.markComplete()">
+                            ✓ Mark as Complete
+                        </button>
+                        <button id="nextBtn" class="nav-btn" onclick="videoPage.navigateToNext()">
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Module List -->
+            <div class="sidebar-panel">
+                <div class="course-list-header">
+                    <h3 id="sidebarCourseTitle">Course Name</h3>
+                    <p><span id="completedCount">0</span>/<span id="totalCount">0</span> modules completed</p>
+                </div>
+                <div id="moduleListContainer" class="module-list-container">
+                    <!-- Modules will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="router.js"></script>
+    <script>
+        // Backend Configuration
+        window.LMS_CONFIG = {
+            SUPABASE_URL: 'https://dawxhfdvozykhxkzpfbv.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhd3hoZmR2b3p5a2h4a3pwZmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTgyMzAsImV4cCI6MjA5OTA5NDIzMH0.MiGLrpu3i-5u9hyQrdyBFm9J5pb689Oe21eUsKUjbyU',
+            API_BASE_URL: '/api',
+            USE_PRISMA_API: false
+        };
+
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            window.LMS_CONFIG.SUPABASE_URL,
+            window.LMS_CONFIG.SUPABASE_ANON_KEY
+        );
+        window.supabase = supabase;
+
+        // Video View Page Manager
+        class VideoPage {
+            constructor() {
+                this.currentUser = null;
+                this.userProfile = null;
+                this.course = null;
+                this.modules = [];
+                this.currentModule = null;
+                this.userProgress = {};
+                this.courseId = null;
+                this.moduleId = null;
+                
+                this.init();
+            }
+
+            async init() {
+                await this.checkAuth();
+                this.setupEventListeners();
+                
+                // Listen for route changes
+                window.addEventListener('routeChanged', (e) => {
+                    if (e.detail.params.page === 'video-view') {
+                        this.loadVideo(
+                            e.detail.params.courseId,
+                            e.detail.params.moduleId
+                        );
+                    }
+                });
+
+                // Get IDs from URL or query params
+                const urlParams = new URLSearchParams(window.location.search);
+                const courseId = urlParams.get('courseId') || window.lmsRouter?.currentParams?.courseId;
+                const moduleId = urlParams.get('moduleId') || window.lmsRouter?.currentParams?.moduleId;
+                
+                if (courseId && moduleId && this.currentUser) {
+                    this.loadVideo(courseId, moduleId);
+                }
+            }
+
+            async checkAuth() {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!session) {
+                    document.getElementById('authRequired').style.display = 'block';
+                    document.getElementById('mainContent').style.display = 'none';
+                    return;
+                }
+
+                this.currentUser = session.user;
+                document.getElementById('authRequired').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                
+                document.getElementById('userEmail').textContent = session.user.email;
+                
+                await this.loadUserProfile();
+            }
+
+            async loadUserProfile() {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', this.currentUser.id)
+                    .single();
+                
+                if (data) {
+                    this.userProfile = data;
+                }
+            }
+
+            async loadVideo(courseId, moduleId) {
+                this.courseId = courseId;
+                this.moduleId = moduleId;
+
+                document.getElementById('loadingState').style.display = 'flex';
+                document.getElementById('videoContent').style.display = 'none';
+                document.getElementById('accessDenied').style.display = 'none';
+
+                // Verify user has access to course
+                const { data: userCourse } = await supabase
+                    .from('user_courses')
+                    .select('*')
+                    .eq('user_id', this.currentUser.id)
+                    .eq('course_id', courseId)
+                    .eq('payment_status', 'completed')
+                    .single();
+
+                if (!userCourse) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('accessDenied').style.display = 'block';
+                    return;
+                }
+
+                // Load course details
+                const { data: course } = await supabase
+                    .from('courses')
+                    .select('*')
+                    .eq('id', courseId)
+                    .single();
+
+                if (!course) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('accessDenied').style.display = 'block';
+                    return;
+                }
+
+                this.course = course;
+
+                // Load all modules
+                const { data: modules } = await supabase
+                    .from('course_modules')
+                    .select('*')
+                    .eq('course_id', courseId)
+                    .order('module_order');
+
+                this.modules = modules || [];
+
+                // Find current module
+                this.currentModule = this.modules.find(m => m.id === moduleId);
+                
+                if (!this.currentModule) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('accessDenied').style.display = 'block';
+                    return;
+                }
+
+                // Check module access
+                if (!this.hasModuleAccess(this.currentModule)) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('accessDenied').style.display = 'block';
+                    return;
+                }
+
+                // Load user progress
+                const { data: progress } = await supabase
+                    .from('user_progress')
+                    .select('*')
+                    .eq('user_id', this.currentUser.id);
+
+                this.userProgress = {};
+                progress?.forEach(p => {
+                    this.userProgress[p.module_id] = p;
+                });
+
+                this.renderVideo();
+                this.renderModuleList();
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('videoContent').style.display = 'block';
+            }
+
+            hasModuleAccess(module) {
+                const tierLevel = { 'basic': 1, 'premium': 2 };
+                const userTierLevel = tierLevel[this.userProfile?.subscription_tier] || 1;
+                const moduleTierLevel = tierLevel[module.required_tier] || 1;
+                
+                return userTierLevel >= moduleTierLevel;
+            }
+
+            renderVideo() {
+                document.getElementById('sidebarCourseTitle').textContent = this.course.title;
+                document.getElementById('videoTitle').textContent = this.currentModule.title;
+                document.getElementById('videoDescription').textContent = 
+                    this.currentModule.description || 'No description available.';
+                document.getElementById('videoDuration').textContent = 
+                    this.currentModule.duration || '--:--';
+                document.getElementById('videoTier').textContent = 
+                    this.currentModule.required_tier.toUpperCase();
+                
+                const moduleIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
+                document.getElementById('moduleNumber').textContent = moduleIndex + 1;
+
+                // Update complete button state
+                const isCompleted = !!this.userProgress[this.currentModule.id];
+                const completeBtn = document.getElementById('completeBtn');
+                if (isCompleted) {
+                    completeBtn.classList.add('completed');
+                    completeBtn.textContent = '✓ Completed';
+                    completeBtn.disabled = true;
+                } else {
+                    completeBtn.classList.remove('completed');
+                    completeBtn.textContent = '✓ Mark as Complete';
+                    completeBtn.disabled = false;
+                }
+
+                // Update navigation buttons
+                document.getElementById('prevBtn').disabled = moduleIndex === 0;
+                document.getElementById('nextBtn').disabled = moduleIndex === this.modules.length - 1;
+
+                // Load Mux player
+                this.loadMuxPlayer(this.currentModule.video_url);
+
+                // Update progress counts
+                const completedCount = this.modules.filter(m => 
+                    this.userProgress[m.id]
+                ).length;
+                document.getElementById('completedCount').textContent = completedCount;
+                document.getElementById('totalCount').textContent = this.modules.length;
+            }
+
+            loadMuxPlayer(videoUrl) {
+                const player = document.getElementById('muxPlayer');
+                
+                if (!videoUrl) {
+                    player.removeAttribute('playback-id');
+                    player.setAttribute('placeholder', 'Video not available');
+                    return;
+                }
+
+                // Extract playback ID from Mux URL
+                const playbackId = this.extractPlaybackId(videoUrl);
+                player.setAttribute('playback-id', playbackId);
+                
+                // Track video start
+                player.addEventListener('play', () => {
+                    this.trackVideoPlay();
+                }, { once: true });
+            }
+
+            extractPlaybackId(videoUrl) {
+                const match = videoUrl.match(/(?:mux\.com\/|playback_id=)([a-zA-Z0-9_-]+)/);
+                return match ? match[1] : videoUrl;
+            }
+
+            async trackVideoPlay() {
+                try {
+                    await supabase
+                        .from('user_activity')
+                        .insert({
+                            user_id: this.currentUser.id,
+                            course_id: this.courseId,
+                            module_id: this.currentModule.id,
+                            activity_type: 'video_play',
+                            metadata: { timestamp: new Date().toISOString() }
+                        });
+                } catch (error) {
+                    console.error('Error tracking video play:', error);
+                }
+            }
+
+            renderModuleList() {
+                const container = document.getElementById('moduleListContainer');
+                
+                container.innerHTML = this.modules.map((module, index) => {
+                    const hasAccess = this.hasModuleAccess(module);
+                    const isCompleted = !!this.userProgress[module.id];
+                    const isActive = module.id === this.currentModule.id;
+
+                    return `
+                        <div class="module-list-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''} ${!hasAccess ? 'locked' : ''}"
+                             onclick="${hasAccess ? `videoPage.loadVideo('${this.courseId}', '${module.id}')` : ''}">
+                            <div class="module-check">${isCompleted ? '✓' : (index + 1)}</div>
+                            <div class="module-list-content">
+                                <div class="module-list-title">${module.title}</div>
+                                <div class="module-list-duration">⏱️ ${module.duration || '--:--'}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            navigateToPrevious() {
+                const currentIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
+                if (currentIndex > 0) {
+                    const prevModule = this.modules[currentIndex - 1];
+                    if (this.hasModuleAccess(prevModule)) {
+                        window.lmsRouter.goToVideo(this.courseId, prevModule.id);
+                    }
+                }
+            }
+
+            navigateToNext() {
+                const currentIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
+                if (currentIndex < this.modules.length - 1) {
+                    const nextModule = this.modules[currentIndex + 1];
+                    if (this.hasModuleAccess(nextModule)) {
+                        window.lmsRouter.goToVideo(this.courseId, nextModule.id);
+                    }
+                }
+            }
+
+            async markComplete() {
+                try {
+                    // Insert or update progress
+                    await supabase
+                        .from('user_progress')
+                        .upsert({
+                            user_id: this.currentUser.id,
+                            module_id: this.currentModule.id,
+                            course_id: this.courseId,
+                            completed: true,
+                            completed_at: new Date().toISOString(),
+                            progress_percentage: 100
+                        });
+
+                    // Update local state
+                    this.userProgress[this.currentModule.id] = {
+                        completed: true,
+                        completed_at: new Date().toISOString()
+                    };
+
+                    // Record activity
+                    await supabase
+                        .from('user_activity')
+                        .insert({
+                            user_id: this.currentUser.id,
+                            course_id: this.courseId,
+                            module_id: this.currentModule.id,
+                            activity_type: 'module_complete',
+                            metadata: { completed_at: new Date().toISOString() }
+                        });
+
+                    // Re-render
+                    this.renderVideo();
+                    this.renderModuleList();
+
+                    // Show success message
+                    alert('✅ Module marked as complete!');
+
+                } catch (error) {
+                    console.error('Error marking complete:', error);
+                    alert('❌ Failed to mark as complete. Please try again.');
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+            }
+
+            async logout() {
+                await supabase.auth.signOut();
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            window.videoPage = new VideoPage();
+        });
+    </script>
+</body>
+</html>

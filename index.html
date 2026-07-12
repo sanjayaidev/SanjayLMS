@@ -29,6 +29,7 @@
                 <div class="user-info">
                     <span class="user-email" id="userEmail">Loading...</span>
                     <span class="user-tier" id="currentTier">Basic</span>
+                    <a href="my-courses.html" class="btn-secondary">My Courses</a>
                     <button id="logoutBtn" class="btn-secondary">Logout</button>
                 </div>
                 <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
@@ -168,6 +169,7 @@
             </div>
             <nav class="mobile-nav">
                 <a href="#" onclick="closeMobileMenu()">Dashboard</a>
+                <a href="my-courses.html" onclick="closeMobileMenu()">My Courses</a>
                 <a href="#progress" onclick="closeMobileMenu()">My Progress</a>
                 <a href="#" onclick="showUpgradeModal(); closeMobileMenu()">Upgrade</a>
             </nav>
@@ -233,6 +235,7 @@
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="router.js"></script>
     <script src="lms.js"></script>
     <script src="lms-extensions.js"></script>
     
