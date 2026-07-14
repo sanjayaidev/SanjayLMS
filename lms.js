@@ -211,18 +211,9 @@ class LMSManager {
 
     // TIER-BASED ACCESS CONTROL
     hasCourseAccess(courseId) {
-        const course = this.courses.find(c => c.id === courseId);
-        if (!course) return false;
-
-        // Check if user has purchased the course
-        const hasPurchased = this.userCourses.some(uc => uc.course_id === courseId);
-        
-        // Check if user's tier meets course requirement
-        const tierLevel = { 'basic': 1, 'premium': 2 };
-        const userTierLevel = tierLevel[this.userProfile?.subscription_tier] || 1;
-        const courseTierLevel = tierLevel[course.required_tier] || 1;
-        
-        return hasPurchased && userTierLevel >= courseTierLevel;
+        // Once a course is purchased, the user has access to it regardless of
+        // their current profile tier (tier only gates what they're ALLOWED to buy).
+        return this.userCourses.some(uc => uc.course_id === courseId);
     }
 
     hasModuleAccess(module) {
@@ -679,6 +670,13 @@ class LMSManager {
         const course = this.courses.find(c => c.id === courseId);
         if (!course) return;
 
+        // Guard: don't attempt to purchase something already owned
+        if (this.hasCourseAccess(courseId)) {
+            this.showMessage('You already have access to this course.', 'success');
+            this.renderCourses();
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('user_courses')
@@ -689,7 +687,16 @@ class LMSManager {
                     purchased_price: course.price
                 }]);
 
-            if (error) throw error;
+            if (error) {
+                // Row already exists (e.g. from a prior attempt) - treat as already owned
+                if (error.code === '23505') {
+                    await this.loadUserCourses();
+                    this.showMessage('You already have access to this course.', 'success');
+                    this.renderCourses();
+                    return;
+                }
+                throw error;
+            }
 
             // Track purchase activity
             await supabase
