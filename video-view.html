@@ -322,6 +322,7 @@
                 <div id="videoContent" style="display: none;">
                     <div class="video-container">
                         <mux-player id="muxPlayer" stream-type="on-demand" controls></mux-player>
+                        <iframe id="youtubePlayer" style="display:none; width:100%; height:100%; border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                     </div>
 
                     <div class="video-info-panel">
@@ -583,21 +584,45 @@
 
             loadMuxPlayer(videoUrl) {
                 const player = document.getElementById('muxPlayer');
-                
+                const ytPlayer = document.getElementById('youtubePlayer');
+
                 if (!videoUrl) {
+                    player.style.display = '';
+                    ytPlayer.style.display = 'none';
+                    ytPlayer.src = '';
                     player.removeAttribute('playback-id');
                     player.setAttribute('placeholder', 'Video not available');
                     return;
                 }
 
-                // Extract playback ID from Mux URL
-                const playbackId = this.extractPlaybackId(videoUrl);
-                player.setAttribute('playback-id', playbackId);
-                
-                // Track video start
-                player.addEventListener('play', () => {
+                const youtubeId = this.extractYouTubeId(videoUrl);
+
+                if (youtubeId) {
+                    // YouTube video - show iframe, hide mux-player
+                    player.style.display = 'none';
+                    player.removeAttribute('playback-id');
+                    ytPlayer.style.display = 'block';
+                    ytPlayer.src = `https://www.youtube.com/embed/${youtubeId}?rel=0`;
                     this.trackVideoPlay();
-                }, { once: true });
+                } else {
+                    // Mux video - show mux-player, hide iframe
+                    ytPlayer.style.display = 'none';
+                    ytPlayer.src = '';
+                    player.style.display = '';
+                    const playbackId = this.extractPlaybackId(videoUrl);
+                    player.setAttribute('playback-id', playbackId);
+
+                    // Track video start
+                    player.addEventListener('play', () => {
+                        this.trackVideoPlay();
+                    }, { once: true });
+                }
+            }
+
+            extractYouTubeId(videoUrl) {
+                // Matches youtube.com/watch?v=, youtube.com/embed/, youtube.com/shorts/, and youtu.be/ links
+                const match = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                return match ? match[1] : null;
             }
 
             extractPlaybackId(videoUrl) {
