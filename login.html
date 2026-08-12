@@ -172,92 +172,111 @@
         </p>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Load LMS Configuration -->
     <script>
-        // Configuration - Update with your Supabase credentials
-        const SUPABASE_URL = 'https://bvavtdyxuzzabzgodbjw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8';
-
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Check if already logged in
+        // Backend Configuration - Update these values for your deployment
+        window.LMS_CONFIG = {
+            // For Supabase
+            SUPABASE_URL: 'https://bvavtdyxuzzabzgodbjw.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8',
+            
+            // For Prisma/Vercel API (alternative)
+            API_BASE_URL: '/api',
+            USE_PRISMA_API: false  // Set to true if using Prisma API routes
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-manager.js"></script>
+    <script>
+        // Check if already logged in using AuthManager
         async function checkAuth() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            // Wait for AuthManager to initialize
+            await window.AuthManager.init();
+            const session = await window.AuthManager.refreshSession();
             if (session) {
-                window.location.href = 'index.html';
+                // Get redirect URL from query params or default to index
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirect = urlParams.get('redirect') || 'index.html';
+                window.location.href = redirect;
             }
         }
 
         // Login form handler
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
 
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email,
-                password
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                const { data, error } = await window.AuthManager.supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) {
+                    showMessage('loginMessage', error.message, 'error');
+                } else {
+                    showMessage('loginMessage', 'Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirect = urlParams.get('redirect') || 'index.html';
+                        window.location.href = redirect;
+                    }, 1000);
+                }
             });
 
-            if (error) {
-                showMessage('loginMessage', error.message, 'error');
-            } else {
-                showMessage('loginMessage', 'Login successful! Redirecting...', 'success');
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
-            }
-        });
+            // Signup form handler
+            document.getElementById('signupForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('signupName').value;
+                const email = document.getElementById('signupEmail').value;
+                const password = document.getElementById('signupPassword').value;
 
-        // Signup form handler
-        document.getElementById('signupForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('signupName').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-
-            const { data, error } = await supabaseClient.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        full_name: name
+                const { data, error } = await window.AuthManager.supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: name
+                        }
                     }
+                });
+
+                if (error) {
+                    showMessage('signupMessage', error.message, 'error');
+                } else {
+                    showMessage('signupMessage', 'Account created! Please check your email to verify.', 'success');
                 }
             });
 
-            if (error) {
-                showMessage('signupMessage', error.message, 'error');
-            } else {
-                showMessage('signupMessage', 'Account created! Please check your email to verify.', 'success');
-            }
-        });
+            // Google login
+            document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+                const { data, error } = await window.AuthManager.supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin + '/index.html'
+                    }
+                });
 
-        // Google login
-        document.getElementById('googleLoginBtn').addEventListener('click', async () => {
-            const { data, error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/index.html'
+                if (error) {
+                    showMessage('loginMessage', error.message, 'error');
                 }
             });
 
-            if (error) {
-                showMessage('loginMessage', error.message, 'error');
-            }
-        });
+            // Toggle between login and signup
+            document.getElementById('showSignup').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelector('.login-container').style.display = 'none';
+                document.getElementById('signupContainer').style.display = 'block';
+            });
 
-        // Toggle between login and signup
-        document.getElementById('showSignup').addEventListener('click', (e) => {
-            e.preventDefault();
-            document.querySelector('.login-container').style.display = 'none';
-            document.getElementById('signupContainer').style.display = 'block';
-        });
-
-        document.getElementById('showLogin').addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('signupContainer').style.display = 'none';
-            document.querySelector('.login-container').style.display = 'block';
+            document.getElementById('showLogin').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('signupContainer').style.display = 'none';
+                document.querySelector('.login-container').style.display = 'block';
+            });
         });
 
         // Show message helper
@@ -267,18 +286,6 @@
             setTimeout(() => {
                 el.innerHTML = '';
             }, 5000);
-        }
-
-        // Check auth on load
-        checkAuth();
-
-        // Update logout button if exists
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
-                await supabaseClient.auth.signOut();
-                window.location.href = 'login.html';
-            });
         }
     </script>
 </body>

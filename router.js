@@ -130,6 +130,10 @@ class LMSRouter {
         const authManager = window.AuthManager || window.authManager;
         
         if (authManager && typeof authManager.isAuthenticated === 'function') {
+            // Wait for AuthManager to be initialized
+            if (typeof authManager.init === 'function') {
+                await authManager.init();
+            }
             return await authManager.isAuthenticated();
         }
 

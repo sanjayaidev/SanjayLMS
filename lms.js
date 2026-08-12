@@ -15,12 +15,26 @@ class LMSManager {
     }
 
     async init() {
+        // Wait for AuthManager to be initialized
+        const authManager = window.AuthManager || window.authManager;
+        if (authManager && typeof authManager.init === 'function') {
+            await authManager.init();
+        }
         await this.checkAuthState();
         this.setupEventListeners();
     }
 
     async checkAuthState() {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Use AuthManager if available
+        const authManager = window.AuthManager || window.authManager;
+        let session = null;
+        
+        if (authManager && typeof authManager.refreshSession === 'function') {
+            session = await authManager.refreshSession();
+        } else {
+            const { data: { session: s }, error } = await supabase.auth.getSession();
+            session = s;
+        }
         
         const authRequired = document.getElementById('authRequired');
         const dashboard = document.getElementById('dashboard');
@@ -805,8 +819,13 @@ class LMSManager {
 
     async logout() {
         try {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
+            const authManager = window.AuthManager || window.authManager;
+            if (authManager && typeof authManager.signOut === 'function') {
+                await authManager.signOut();
+            } else {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+            }
             window.location.href = 'login.html';
         } catch (error) {
             console.error('Logout error:', error);
