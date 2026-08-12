@@ -92,7 +92,7 @@
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhd3hoZmR2b3p5a2h4a3pwZmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTgyMzAsImV4cCI6MjA5OTA5NDIzMH0.MiGLrpu3i-5u9hyQrdyBFm9J5pb689Oe21eUsKUjbyU'
         };
 
-        const supabase = window.supabase.createClient(
+        const supabaseClient = window.supabase.createClient(
             window.LMS_CONFIG.SUPABASE_URL,
             window.LMS_CONFIG.SUPABASE_ANON_KEY
         );
@@ -127,14 +127,14 @@
                 return;
             }
 
-            const { data: { session: s } } = await supabase.auth.getSession();
+            const { data: { session: s } } = await supabaseClient.auth.getSession();
             session = s;
             if (!session) {
                 location.href = `/login.html?next=${encodeURIComponent(location.pathname + location.search)}`;
                 return;
             }
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('courses')
                 .select('id, title, price, price_usd, thumbnail_url')
                 .eq('id', courseId)
