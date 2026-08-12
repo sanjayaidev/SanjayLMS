@@ -666,6 +666,13 @@ class LMSManager {
         return userTierLevel >= courseTierLevel && !this.hasCourseAccess(course.id);
     }
 
+    // NOTE: this used to insert a 'completed' row directly into user_courses
+    // from the browser — meaning anyone with devtools open could grant
+    // themselves any course for free, no payment involved. Real payment now
+    // happens in checkout.html via /api/create-order + /api/verify-order
+    // (Razorpay/PayPal), and only those server-side endpoints are allowed to
+    // write to user_courses (see schema-payments.sql). This function now just
+    // routes the user into that flow.
     async purchaseCourse(courseId) {
         const course = this.courses.find(c => c.id === courseId);
         if (!course) return;
@@ -677,42 +684,21 @@ class LMSManager {
             return;
         }
 
+        window.location.href = `/checkout.html?course=${courseId}`;
+    }
+
+    // Retained for reference / dead-code removal in a follow-up pass — the
+    // logic below (tier upgrade on purchase, notifications, etc.) originally
+    // ran after the mock insert above. It's preserved here commented out so
+    // nothing is silently lost; wire it into /api/verify-order.js server-side
+    // if you want tier auto-upgrade on purchase.
+    async _legacyPostPurchase(courseId, course) {
         try {
-            const { data, error } = await supabase
-                .from('user_courses')
-                .insert([{
-                    user_id: this.currentUser.id,
-                    course_id: courseId,
-                    payment_status: 'completed',
-                    purchased_price: course.price
-                }]);
-
-            if (error) {
-                // Row already exists (e.g. from a prior attempt) - treat as already owned
-                if (error.code === '23505') {
-                    await this.loadUserCourses();
-                    this.showMessage('You already have access to this course.', 'success');
-                    this.renderCourses();
-                    return;
-                }
-                throw error;
-            }
-
-            // Track purchase activity
-            await supabase
-                .from('user_activity')
-                .insert([{
-                    user_id: this.currentUser.id,
-                    activity_type: 'course_purchase',
-                    course_id: courseId,
-                    metadata: { course_title: course.title, price: course.price }
-                }]);
-
             // Update user tier if purchasing higher tier course
             const tierLevel = { 'basic': 1, 'premium': 2 };
             const currentTierLevel = tierLevel[this.userProfile.subscription_tier] || 1;
             const courseTierLevel = tierLevel[course.required_tier] || 1;
-            
+
             if (courseTierLevel > currentTierLevel) {
                 await supabase
                     .from('profiles')
@@ -843,8 +829,8 @@ function closeMobileMenu() {
 // Initialize LMS Manager
 document.addEventListener('DOMContentLoaded', function() {
     // Supabase Configuration
-    const SUPABASE_URL = 'https://dawxhfdvozykhxkzpfbv.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhd3hoZmR2b3p5a2h4a3pwZmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTgyMzAsImV4cCI6MjA5OTA5NDIzMH0.MiGLrpu3i-5u9hyQrdyBFm9J5pb689Oe21eUsKUjbyU';
+    const SUPABASE_URL = 'https://bvavtdyxuzzabzgodbjw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8';
 
     window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.lmsManager = new LMSManager();

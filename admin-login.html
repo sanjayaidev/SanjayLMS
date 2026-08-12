@@ -74,10 +74,10 @@
         // Initialize Supabase
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // SIMPLE ADMIN CHECK - Only graphicyin@gmail.com is admin
+        // SIMPLE ADMIN CHECK - TODO: replace with your own admin email(s) before deploying
         function isAdminUser(email) {
             const adminEmails = [
-                'graphicyin@gmail.com'
+                'YOUR_ADMIN_EMAIL@example.com'
                 // Add more admin emails here if needed
             ];
             return adminEmails.includes(email.toLowerCase());

@@ -48,7 +48,8 @@ class AdminPanel {
 
     async checkAdminRole(userId) {
         // Simple email-based admin check
-        const adminEmails = ['graphicyin@gmail.com'];
+        // TODO: replace with your own admin email(s) before deploying
+        const adminEmails = ['YOUR_ADMIN_EMAIL@example.com'];
         
         if (!this.currentUser || !this.currentUser.email) {
             console.log('❌ No current user or email found');

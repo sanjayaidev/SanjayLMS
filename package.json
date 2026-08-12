@@ -1,6 +1,7 @@
 {
   "name": "lms-platform",
   "version": "1.0.0",
+  "type": "module",
   "description": "Learning Management System with tier-based access control",
   "scripts": {
     "dev": "npx serve .",

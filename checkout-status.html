@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirming your purchase - LMS Platform</title>
+    <link rel="stylesheet" href="lms.css">
+    <style>
+        body { background: #f5f6fa; }
+        .status-card {
+            max-width: 420px; margin: 4rem auto; padding: 2.5rem 2rem;
+            background: white; border-radius: 16px; text-align: center;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+        .spinner {
+            width: 32px; height: 32px; margin: 0 auto 1.2rem;
+            border: 3px solid #e0e0f0; border-top-color: #667eea;
+            border-radius: 50%; animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .success { color: #22a06b; }
+        .error { color: #d33; }
+        .progress-wrap { background: #eee; border-radius: 999px; height: 4px; overflow: hidden; margin: 1rem 0 0.5rem; }
+        .progress-bar { height: 100%; background: #667eea; width: 0%; transition: width .4s; }
+        .attempt-txt { font-size: 0.75rem; color: #999; }
+        .cta-button { display: inline-block; margin-top: 1rem; padding: 0.7rem 1.6rem; }
+    </style>
+</head>
+<body>
+    <div class="status-card">
+        <div id="statePending">
+            <div class="spinner"></div>
+            <h2>Confirming your payment…</h2>
+            <p>This usually takes a few seconds. Please don't close this page.</p>
+            <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+            <div class="attempt-txt" id="attemptTxt">Checking…</div>
+        </div>
+
+        <div id="stateSuccess" style="display:none;">
+            <div class="icon success">✓</div>
+            <h2 class="success">You're enrolled!</h2>
+            <p>Your purchase went through. Redirecting you into the course…</p>
+        </div>
+
+        <div id="stateFail" style="display:none;">
+            <div class="icon error">!</div>
+            <h2 class="error">Payment not confirmed</h2>
+            <p id="failMsg">We couldn't confirm your payment within 5 minutes. If money was deducted, contact support with your order ID below.</p>
+            <p style="font-size:0.75rem; color:#999; word-break:break-all;" id="failOrder"></p>
+            <a class="cta-button" href="/">Go back</a>
+        </div>
+    </div>
+
+    <script>
+        const params    = new URLSearchParams(location.search);
+        const orderId   = params.get('order_id');
+        const courseId  = params.get('course_id');
+
+        if (!orderId) {
+            show('fail', 'No order ID in URL.');
+        } else {
+            const INTERVAL_MS  = 3000;
+            const MAX_DURATION = 5 * 60 * 1000;
+            const startTime    = Date.now();
+            let attempt = 0;
+
+            const progressBar = document.getElementById('progressBar');
+            const attemptTxt  = document.getElementById('attemptTxt');
+
+            async function poll() {
+                const elapsed = Date.now() - startTime;
+                progressBar.style.width = Math.min(100, (elapsed / MAX_DURATION) * 100) + '%';
+                attempt++;
+                attemptTxt.textContent = `Attempt ${attempt} · ${Math.floor(elapsed / 1000)}s elapsed`;
+
+                if (elapsed >= MAX_DURATION) {
+                    show('fail', 'Payment not confirmed within 5 minutes.');
+                    document.getElementById('failOrder').textContent = 'Order ID: ' + orderId;
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/verify-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_id: orderId }),
+                    });
+                    const data = await res.json();
+
+                    if (data.paid) {
+                        show('success');
+                        setTimeout(() => {
+                            location.href = `/course/${data.course_id || courseId}`;
+                        }, 1500);
+                        return;
+                    }
+
+                    if (data.status === 'failed') {
+                        show('fail', 'Payment failed or expired.');
+                        document.getElementById('failOrder').textContent = 'Order ID: ' + orderId;
+                        return;
+                    }
+
+                    setTimeout(poll, INTERVAL_MS);
+                } catch (err) {
+                    console.warn('[checkout-status] poll error:', err.message);
+                    setTimeout(poll, INTERVAL_MS);
+                }
+            }
+
+            setTimeout(poll, 1500);
+        }
+
+        function show(state, msg) {
+            document.getElementById('statePending').style.display = 'none';
+            document.getElementById('stateSuccess').style.display = state === 'success' ? 'block' : 'none';
+            document.getElementById('stateFail').style.display    = state === 'fail'    ? 'block' : 'none';
+            if (msg) document.getElementById('failMsg').textContent = msg;
+        }
+    </script>
+</body>
+</html>

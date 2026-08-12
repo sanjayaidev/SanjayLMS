@@ -1,66 +1,20 @@
 {
-  "version": 2,
-  "name": "lms-platform",
-  "builds": [
-    {
-      "src": "**/*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "**/*.css",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "**/*.js",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api-routes.js"
-    },
-    {
-      "src": "^/my-courses/?$",
-      "dest": "/my-courses.html"
-    },
-    {
-      "src": "^/course/([^/]+)/?$",
-      "dest": "/course-detail.html"
-    },
-    {
-      "src": "^/video/([^/]+)/([^/]+)/?$",
-      "dest": "/video-view.html"
-    },
-    {
-      "src": "^/login/?$",
-      "dest": "/login.html"
-    },
-    {
-      "src": "^/admin/?$",
-      "dest": "/admin.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+  "rewrites": [
+    { "source": "/my-courses", "destination": "/my-courses.html" },
+    { "source": "/course/:id", "destination": "/course-detail.html" },
+    { "source": "/video/:courseId/:moduleId", "destination": "/video-view.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/checkout", "destination": "/checkout.html" },
+    { "source": "/checkout-status", "destination": "/checkout-status.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
   ]
