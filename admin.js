@@ -365,7 +365,8 @@ class AdminPanel {
             duration: document.getElementById('moduleDuration').value,
             video_url: document.getElementById('moduleVideoUrl').value,
             required_tier: document.getElementById('moduleTier').value,
-            is_premium: document.getElementById('moduleIsPremium').checked
+            is_premium: document.getElementById('moduleIsPremium').checked,
+            is_preview: document.getElementById('moduleIsPreview').checked
         };
 
         try {
@@ -547,6 +548,7 @@ class AdminPanel {
                             <span>Duration: ${module.duration || 'N/A'}</span>
                             <span>Tier: ${module.required_tier}</span>
                             ${module.is_premium ? '<span class="course-tier">PREMIUM</span>' : ''}
+                            ${module.is_preview ? '<span class="course-tier" style="background:#2ecc71;">🔓 FREE PREVIEW</span>' : ''}
                         </div>
                         <p style="color: #ccc; margin-top: 0.5rem; font-size: 0.9rem;">${module.description}</p>
                     </div>
@@ -773,6 +775,7 @@ class AdminPanel {
                 document.getElementById('moduleVideoUrl').value = module.video_url || '';
                 document.getElementById('moduleTier').value = module.required_tier;
                 document.getElementById('moduleIsPremium').checked = module.is_premium;
+                document.getElementById('moduleIsPreview').checked = !!module.is_preview;
             }
         } else {
             // Create mode
@@ -782,6 +785,7 @@ class AdminPanel {
             document.getElementById('moduleOrder').value = this.modules.length + 1;
             document.getElementById('moduleTier').value = 'basic';
             document.getElementById('moduleIsPremium').checked = false;
+            document.getElementById('moduleIsPreview').checked = false;
         }
         
         modal.classList.add('active');

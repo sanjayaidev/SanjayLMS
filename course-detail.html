@@ -200,6 +200,47 @@
             color: #6b7280;
         }
 
+        .module-item.preview {
+            background: #f0fdf4;
+        }
+
+        .module-item.preview .module-number {
+            background: #22c55e;
+        }
+
+        .status-preview {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .buy-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.25rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .buy-banner p {
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .buy-banner .cta-button {
+            background: white;
+            color: #667eea;
+            padding: 0.65rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
         .sidebar {
             display: flex;
             flex-direction: column;
@@ -386,6 +427,12 @@
                     </div>
                 </div>
 
+                <!-- Buy Now Banner (shown only if not purchased) -->
+                <div id="buyBanner" class="buy-banner" style="display: none;">
+                    <p>🔓 You're in preview mode — one module is free to watch. Buy the course to unlock everything.</p>
+                    <a id="buyBannerLink" href="#" class="cta-button">Enroll Now</a>
+                </div>
+
                 <!-- Content Layout -->
                 <div class="content-layout">
                     <!-- Modules Panel -->
@@ -513,7 +560,7 @@
                 document.getElementById('courseContent').style.display = 'none';
                 document.getElementById('errorState').style.display = 'none';
 
-                // Check if user has access
+                // Check if user has access (purchased & paid)
                 const { data: userCourse } = await supabase
                     .from('user_courses')
                     .select('*')
@@ -522,13 +569,9 @@
                     .eq('payment_status', 'completed')
                     .single();
 
-                if (!userCourse) {
-                    // User hasn't purchased - redirect to checkout
-                    document.getElementById('loadingState').style.display = 'none';
-                    window.location.href = `/checkout.html?course=${courseId}`;
-                    return;
-                }
-
+                // Instead of redirecting straight to checkout, keep the user here so they
+                // can preview the course (locked modules + one free preview module).
+                this.hasPurchased = !!userCourse;
 
                 // Load course details
                 const { data: course } = await supabase
@@ -545,9 +588,11 @@
 
                 this.course = course;
                 
-                // Load modules
+                // Load modules — via the public view, which deliberately excludes
+                // video_url. The actual playable URL is fetched only on the video
+                // page, through the get_module_video_url() RPC, after access checks.
                 const { data: modules } = await supabase
-                    .from('course_modules')
+                    .from('course_modules_public')
                     .select('*')
                     .eq('course_id', courseId)
                     .order('module_order');
@@ -594,6 +639,14 @@
                 document.getElementById('totalDuration').textContent = this.calculateTotalDuration();
                 document.getElementById('courseLevel').textContent = this.course.level || 'All Levels';
 
+                const buyBanner = document.getElementById('buyBanner');
+                if (this.hasPurchased) {
+                    buyBanner.style.display = 'none';
+                } else {
+                    buyBanner.style.display = 'flex';
+                    document.getElementById('buyBannerLink').href = `/checkout.html?course=${this.course.id}`;
+                }
+
                 this.renderModules();
                 this.renderDownloads();
             }
@@ -612,6 +665,12 @@
             }
 
             hasModuleAccess(module) {
+                // Free preview modules are watchable by anyone logged in, purchased or not.
+                if (module.is_preview) return true;
+
+                // Everything else requires the course to be purchased.
+                if (!this.hasPurchased) return false;
+
                 const tierLevel = { 'basic': 1, 'premium': 2 };
                 const userTierLevel = tierLevel[this.userProfile?.subscription_tier] || 1;
                 const moduleTierLevel = tierLevel[module.required_tier] || 1;
@@ -625,11 +684,15 @@
                 container.innerHTML = this.modules.map((module, index) => {
                     const hasAccess = this.hasModuleAccess(module);
                     const isCompleted = !!this.userProgress[module.id];
+                    const isPreview = !!module.is_preview;
                     
                     let statusClass = 'status-available';
                     let statusText = 'Available';
                     
-                    if (!hasAccess) {
+                    if (isPreview && !this.hasPurchased) {
+                        statusClass = 'status-preview';
+                        statusText = '▶ Free Preview';
+                    } else if (!hasAccess) {
                         statusClass = 'status-locked';
                         statusText = 'Locked';
                     } else if (isCompleted) {
@@ -638,11 +701,11 @@
                     }
 
                     return `
-                        <div class="module-item ${isCompleted ? 'completed' : ''} ${!hasAccess ? 'locked' : ''}" 
+                        <div class="module-item ${isCompleted ? 'completed' : ''} ${!hasAccess ? 'locked' : ''} ${isPreview ? 'preview' : ''}" 
                              onclick="${hasAccess ? `window.lmsRouter.goToVideo('${this.course.id}', '${module.id}')` : ''}">
                             <div class="module-number">${isCompleted ? '✓' : (index + 1)}</div>
                             <div class="module-content">
-                                <div class="module-title">${module.title} ${!hasAccess ? '🔒' : ''}</div>
+                                <div class="module-title">${module.title} ${isPreview && !this.hasPurchased ? '🔓' : (!hasAccess ? '🔒' : '')}</div>
                                 <div class="module-description">${module.description || 'No description'}</div>
                                 <div class="module-meta">
                                     <span>⏱️ ${module.duration || 'N/A'} min</span>

@@ -467,6 +467,13 @@
                 document.getElementById('videoContent').style.display = 'none';
                 document.getElementById('accessDenied').style.display = 'none';
 
+                // Reset access-denied banner back to its default copy before re-evaluating
+                const deniedReset = document.getElementById('accessDenied');
+                deniedReset.querySelector('p').textContent = "You don't have permission to view this content.";
+                const linkReset = deniedReset.querySelector('a');
+                linkReset.href = 'my-courses.html';
+                linkReset.textContent = 'Back to My Courses';
+
                 // Verify user has access to course
                 const { data: userCourse } = await supabase
                     .from('user_courses')
@@ -476,11 +483,11 @@
                     .eq('payment_status', 'completed')
                     .single();
 
-                if (!userCourse) {
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('accessDenied').style.display = 'block';
-                    return;
-                }
+                this.hasPurchased = !!userCourse;
+
+                // If not purchased, we don't bail out here anymore — a free preview module
+                // may still be playable. We check per-module access further below, once we
+                // know which module was requested.
 
                 // Load course details
                 const { data: course } = await supabase
@@ -497,9 +504,11 @@
 
                 this.course = course;
 
-                // Load all modules
+                // Load all modules — via the public view, which excludes video_url.
+                // The actual playable URL for the requested module is fetched
+                // separately below, through the get_module_video_url() RPC.
                 const { data: modules } = await supabase
-                    .from('course_modules')
+                    .from('course_modules_public')
                     .select('*')
                     .eq('course_id', courseId)
                     .order('module_order');
@@ -519,6 +528,15 @@
                 if (!this.hasModuleAccess(this.currentModule)) {
                     document.getElementById('loadingState').style.display = 'none';
                     document.getElementById('accessDenied').style.display = 'block';
+
+                    // If it's simply not purchased (rather than a tier issue), point them to checkout
+                    if (!this.hasPurchased) {
+                        const denied = document.getElementById('accessDenied');
+                        denied.querySelector('p').textContent = 'This module is locked. Buy the course to unlock it.';
+                        const link = denied.querySelector('a');
+                        link.href = `/checkout.html?course=${courseId}`;
+                        link.textContent = 'Buy This Course';
+                    }
                     return;
                 }
 
@@ -533,7 +551,8 @@
                     this.userProgress[p.module_id] = p;
                 });
 
-                this.renderVideo();
+                this.renderVideoInfo();
+                await this.loadVideoSource();
                 this.renderModuleList();
 
                 document.getElementById('loadingState').style.display = 'none';
@@ -541,6 +560,12 @@
             }
 
             hasModuleAccess(module) {
+                // Free preview modules are watchable by anyone logged in, purchased or not.
+                if (module.is_preview) return true;
+
+                // Everything else requires the course to be purchased.
+                if (!this.hasPurchased) return false;
+
                 const tierLevel = { 'basic': 1, 'premium': 2 };
                 const userTierLevel = tierLevel[this.userProfile?.subscription_tier] || 1;
                 const moduleTierLevel = tierLevel[module.required_tier] || 1;
@@ -548,7 +573,7 @@
                 return userTierLevel >= moduleTierLevel;
             }
 
-            renderVideo() {
+            renderVideoInfo() {
                 document.getElementById('sidebarCourseTitle').textContent = this.course.title;
                 document.getElementById('videoTitle').textContent = this.currentModule.title;
                 document.getElementById('videoDescription').textContent = 
@@ -578,15 +603,34 @@
                 document.getElementById('prevBtn').disabled = moduleIndex === 0;
                 document.getElementById('nextBtn').disabled = moduleIndex === this.modules.length - 1;
 
-                // Load Mux player
-                this.loadMuxPlayer(this.currentModule.video_url);
-
                 // Update progress counts
                 const completedCount = this.modules.filter(m => 
                     this.userProgress[m.id]
                 ).length;
                 document.getElementById('completedCount').textContent = completedCount;
                 document.getElementById('totalCount').textContent = this.modules.length;
+            }
+
+            // Fetches the actual playable video_url through the secure
+            // get_module_video_url() RPC (server-side access check: preview
+            // module, or purchased + tier match) and loads it into the player.
+            // The modules list itself never contains video_url anymore.
+            async loadVideoSource() {
+                try {
+                    const { data: videoUrl, error } = await supabase
+                        .rpc('get_module_video_url', { p_module_id: this.currentModule.id });
+
+                    if (error) {
+                        console.error('Error fetching video url:', error);
+                        this.loadMuxPlayer(null);
+                        return;
+                    }
+
+                    this.loadMuxPlayer(videoUrl);
+                } catch (error) {
+                    console.error('Error fetching video url:', error);
+                    this.loadMuxPlayer(null);
+                }
             }
 
             loadMuxPlayer(videoUrl) {
@@ -724,14 +768,16 @@
                     const hasAccess = this.hasModuleAccess(module);
                     const isCompleted = !!this.userProgress[module.id];
                     const isActive = module.id === this.currentModule.id;
+                    const isPreview = !!module.is_preview;
+                    const lockIcon = !hasAccess ? ' 🔒' : (isPreview && !this.hasPurchased ? ' 🔓' : '');
 
                     return `
                         <div class="module-list-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''} ${!hasAccess ? 'locked' : ''}"
                              onclick="${hasAccess ? `videoPage.loadVideo('${this.courseId}', '${module.id}')` : ''}">
                             <div class="module-check">${isCompleted ? '✓' : (index + 1)}</div>
                             <div class="module-list-content">
-                                <div class="module-list-title">${module.title}</div>
-                                <div class="module-list-duration">⏱️ ${module.duration || '--:--'}</div>
+                                <div class="module-list-title">${module.title}${lockIcon}</div>
+                                <div class="module-list-duration">⏱️ ${module.duration || '--:--'}${isPreview && !this.hasPurchased ? ' · Free Preview' : ''}</div>
                             </div>
                         </div>
                     `;
@@ -789,8 +835,8 @@
                             metadata: { completed_at: new Date().toISOString() }
                         });
 
-                    // Re-render
-                    this.renderVideo();
+                    // Re-render (info only — don't reload the video source and restart playback)
+                    this.renderVideoInfo();
                     this.renderModuleList();
 
                     // Show success message

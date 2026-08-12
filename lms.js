@@ -167,8 +167,11 @@ class LMSManager {
 
     async loadCourseModules(courseId) {
         try {
+            // Use the public view — it excludes video_url. The actual playable
+            // URL is fetched separately (see selectModule) through the
+            // get_module_video_url() RPC, only once access has been verified.
             const { data, error } = await supabase
-                .from('course_modules')
+                .from('course_modules_public')
                 .select('*')
                 .eq('course_id', courseId)
                 .order('module_order');
@@ -217,6 +220,12 @@ class LMSManager {
     }
 
     hasModuleAccess(module) {
+        // Free preview modules are watchable by anyone logged in, purchased or not.
+        if (module.is_preview) return true;
+
+        // Everything else requires the course itself to be purchased.
+        if (!this.hasCourseAccess(module.course_id)) return false;
+
         const tierLevel = { 'basic': 1, 'premium': 2 };
         const userTierLevel = tierLevel[this.userProfile?.subscription_tier] || 1;
         const moduleTierLevel = tierLevel[module.required_tier] || 1;
@@ -303,11 +312,15 @@ class LMSManager {
             const hasAccess = this.hasModuleAccess(module);
             const isCompleted = this.userProgress[module.id]?.completed;
             const isActive = this.currentModule?.id === module.id;
+            const isPreview = !!module.is_preview && !this.hasCourseAccess(module.course_id);
             
             let status = 'locked';
             let statusText = 'LOCKED';
             
-            if (hasAccess) {
+            if (isPreview) {
+                status = 'available';
+                statusText = '▶ FREE PREVIEW';
+            } else if (hasAccess) {
                 if (isCompleted) {
                     status = 'completed';
                     statusText = 'COMPLETED';
@@ -326,7 +339,7 @@ class LMSManager {
                     <div class="module-header">
                         <div class="module-info">
                             <span class="module-number">${(index + 1).toString().padStart(2, '0')}</span>
-                            <span class="module-title">${module.title} ${!hasAccess ? '🔒' : ''}</span>
+                            <span class="module-title">${module.title} ${isPreview ? '🔓' : (!hasAccess ? '🔒' : '')}</span>
                             <div class="module-meta">
                                 <span class="module-duration">${module.duration || 'N/A'}</span>
                                 <span>Tier: ${module.required_tier}</span>
@@ -362,8 +375,22 @@ class LMSManager {
         document.getElementById('moduleStatus').textContent = isCompleted ? 'Completed' : 'In Progress';
         document.getElementById('completeModule').style.display = isCompleted ? 'none' : 'block';
 
-        // Load Mux video player
-        this.loadVideoPlayer(module.video_url);
+        // Load video via the secure get_module_video_url() RPC — the module
+        // list itself never carries video_url anymore.
+        try {
+            const { data: videoUrl, error } = await supabase
+                .rpc('get_module_video_url', { p_module_id: module.id });
+
+            if (error) {
+                console.error('Error fetching video url:', error);
+                this.loadVideoPlayer(null);
+            } else {
+                this.loadVideoPlayer(videoUrl);
+            }
+        } catch (error) {
+            console.error('Error fetching video url:', error);
+            this.loadVideoPlayer(null);
+        }
 
         // Track module access
         await this.trackModuleAccess(module.id);
