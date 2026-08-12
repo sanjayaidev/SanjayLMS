@@ -118,13 +118,29 @@ class LMSRouter {
     }
 
     async isAuthenticated() {
-        if (!window.supabase) {
-            // Wait for supabase to initialize
-            await new Promise(resolve => setTimeout(resolve, 100));
+        // window.supabase is truthy as soon as the CDN SDK script loads --
+        // it starts out as the raw SDK namespace ({ createClient }) and only
+        // gets `.auth` once a page's own script actually calls createClient().
+        // A plain `if (!window.supabase)` check can't tell the difference, so
+        // it was passing straight through before the real client existed and
+        // this function was reporting "not authenticated" for logged-in users.
+        // Poll for an actual client (something with `.auth.getSession`) instead.
+        const clientReady = () => !!(window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function');
+
+        if (!clientReady()) {
+            const start = Date.now();
+            while (!clientReady() && Date.now() - start < 3000) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
         }
-        
+
+        if (!clientReady()) {
+            console.error('Auth check error: Supabase client never initialized');
+            return false;
+        }
+
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await window.supabase.auth.getSession();
             return !!session;
         } catch (error) {
             console.error('Auth check error:', error);
