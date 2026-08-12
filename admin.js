@@ -447,8 +447,8 @@ class AdminPanel {
         }
 
         container.innerHTML = this.filteredCourses.map(course => {
-            const statusClass = `status-${course.status}`;
-            const statusText = course.status.charAt(0).toUpperCase() + course.status.slice(1);
+            const statusClass = course.status ? `status-${course.status}` : 'status-draft';
+            const statusText = course.status ? course.status.charAt(0).toUpperCase() + course.status.slice(1) : 'Draft';
             
             return `
                 <div class="course-item ${!course.is_active ? 'inactive' : ''}">
@@ -456,14 +456,14 @@ class AdminPanel {
                         <div class="course-info">
                             <h3>${course.title}</h3>
                             <div class="course-meta">
-                                <span class="course-tier">${course.required_tier.toUpperCase()} TIER</span>
-                                <span class="course-price">₹${course.price}</span>
+                                <span class="course-tier">${course.required_tier ? course.required_tier.toUpperCase() : 'FREE'} TIER</span>
+                                <span class="course-price">₹${course.price || 0}</span>
                                 <span class="course-status ${statusClass}">${statusText}</span>
                                 ${!course.is_active ? '<span class="course-status status-inactive">INACTIVE</span>' : ''}
                             </div>
                         </div>
                         <div class="course-actions">
-                            <button class="btn-small" onclick="adminPanel.openCourseModal('${course.id}')">Edit</button>
+                            <button class="btn-small" onclick="adminPanel.openCourseModal(\'${course.id}\')">Edit</button>
                             <button class="btn-small ${course.is_active ? 'btn-danger' : 'btn-success'}" 
                                     onclick="adminPanel.toggleCourseStatus('${course.id}')">
                                 ${course.is_active ? 'Deactivate' : 'Activate'}

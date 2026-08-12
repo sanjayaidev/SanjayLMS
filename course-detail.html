@@ -523,10 +523,12 @@
                     .single();
 
                 if (!userCourse) {
+                    // User hasn't purchased - redirect to checkout
                     document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('errorState').style.display = 'block';
+                    window.location.href = `/checkout.html?course=${courseId}`;
                     return;
                 }
+
 
                 // Load course details
                 const { data: course } = await supabase

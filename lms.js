@@ -815,7 +815,13 @@ function processUpgrade(method) {
 }
 
 function processPayment(method) {
-    alert(`In production, this would process ${method} payment.`);
+    // Redirect to the new checkout page with the current course
+    if (window.lmsManager && window.lmsManager.currentCourseId) {
+        const courseId = window.lmsManager.currentCourseId;
+        window.location.href = `/checkout.html?course=${courseId}`;
+    } else {
+        alert('No course selected for purchase.');
+    }
     closePurchaseModal();
 }
 
