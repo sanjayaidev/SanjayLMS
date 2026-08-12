@@ -860,30 +860,29 @@ function closeMobileMenu() {
     document.body.classList.remove('menu-open');
 }
 
-// Initialize Supabase client SYNCHRONOUSLY (not inside DOMContentLoaded).
-// This must happen immediately when the script runs, matching every other
-// page (course-detail.html, video-view.html, my-courses.html, checkout.html).
-// router.js registers its own DOMContentLoaded listener before this file
-// finishes loading, and it calls supabase.auth.getSession() as soon as that
-// event fires. If client creation is deferred to DOMContentLoaded here,
-// router.js's listener (registered earlier) runs FIRST, window.supabase is
-// still just the raw SDK namespace (no .auth yet), and the auth check throws
-// and silently reports "not logged in" -- bouncing a logged-in user back to
-// the login page and racing token refreshes in a way that can invalidate the
-// real session. Creating the client up-front eliminates that race entirely.
-const SUPABASE_URL = (window.LMS_CONFIG && window.LMS_CONFIG.SUPABASE_URL) || 'https://bvavtdyxuzzabzgodbjw.supabase.co';
-const SUPABASE_ANON_KEY = (window.LMS_CONFIG && window.LMS_CONFIG.SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8';
-
-window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Auth state listener (safe now: window.supabase.auth exists as of the line above)
-supabase.auth.onAuthStateChange((event, session) => {
-    if (window.lmsManager) {
-        window.lmsManager.checkAuthState();
-    }
-});
-
 // Initialize LMS Manager
 document.addEventListener('DOMContentLoaded', function() {
-    window.lmsManager = new LMSManager();
+    // Wait for AuthManager to be ready before initializing LMS Manager
+    const initLMS = () => {
+        window.lmsManager = new LMSManager();
+    };
+
+    // If AuthManager is available, use its auth state listener
+    if (window.AuthManager || window.authManager) {
+        const authManager = window.AuthManager || window.authManager;
+        // Initialize immediately, the manager will handle session loading
+        initLMS();
+        
+        // Also listen for auth state changes via AuthManager
+        if (typeof authManager.onAuthStateChange === 'function') {
+            authManager.onAuthStateChange((event, session) => {
+                if (window.lmsManager) {
+                    window.lmsManager.checkAuthState();
+                }
+            });
+        }
+    } else {
+        // Fallback for backward compatibility
+        initLMS();
+    }
 });
