@@ -87,6 +87,12 @@ class LMSRouter {
             return;
         }
 
+        // Match /checkout-status
+        if (pathname === '/checkout-status' || pathname === '/checkout-status.html') {
+            this.currentParams.page = 'checkout-status';
+            return;
+        }
+
         // Default routes
         if (pathname === '/' || pathname === '/index.html') {
             this.currentParams.page = 'dashboard';
