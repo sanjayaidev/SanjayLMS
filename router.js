@@ -7,7 +7,9 @@ class LMSRouter {
             '/course/:id': 'course-detail.html',
             '/video/:courseId/:moduleId': 'video-view.html',
             '/login': 'login.html',
-            '/admin': 'admin.html'
+            '/admin': 'admin.html',
+            '/checkout': 'checkout.html',
+            '/checkout-status': 'checkout-status.html'
         };
         
         this.currentParams = {};
@@ -44,9 +46,11 @@ class LMSRouter {
         
         // Check authentication for protected routes
         const protectedRoutes = ['/', '/my-courses', '/course/', '/video/', '/admin'];
+        const checkoutRoutes = ['/checkout', '/checkout-status'];
+        const isCheckout = checkoutRoutes.some(route => pathname === route || pathname.startsWith(route + '?') || pathname.startsWith(route + '/'));
         const isProtected = protectedRoutes.some(route => 
             pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?')
-        );
+        ) || isCheckout;
 
         if (isProtected && !await this.isAuthenticated()) {
             if (pathname !== '/login') {
@@ -88,8 +92,16 @@ class LMSRouter {
         }
 
         // Match /checkout-status
-        if (pathname === '/checkout-status' || pathname === '/checkout-status.html') {
+        const checkoutStatusMatch = pathname.match(/^\/checkout-status(?:\.html)?$/);
+        if (checkoutStatusMatch) {
             this.currentParams.page = 'checkout-status';
+            return;
+        }
+
+        // Match /checkout
+        const checkoutMatch = pathname.match(/^\/checkout(?:\.html)?$/);
+        if (checkoutMatch) {
+            this.currentParams.page = 'checkout';
             return;
         }
 
@@ -141,6 +153,10 @@ class LMSRouter {
             targetPage = 'login.html';
         } else if (pathname === '/admin' || pathname === '/admin.html') {
             targetPage = 'admin.html';
+        } else if (this.currentParams.page === 'checkout') {
+            targetPage = 'checkout.html';
+        } else if (this.currentParams.page === 'checkout-status') {
+            targetPage = 'checkout-status.html';
         } else {
             // 404 - redirect to home
             targetPage = 'index.html';
