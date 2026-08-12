@@ -36,6 +36,11 @@
             height: 100%;
         }
 
+        #driveEmbed, #genericPlayer {
+            width: 100%;
+            height: 100%;
+        }
+
         .video-info-panel {
             padding: 2rem;
         }
@@ -323,6 +328,8 @@
                     <div class="video-container">
                         <mux-player id="muxPlayer" stream-type="on-demand" controls></mux-player>
                         <iframe id="youtubePlayer" style="display:none; width:100%; height:100%; border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        <iframe id="driveEmbed" style="display:none; width:100%; height:100%; border:0;" allow="autoplay" allowfullscreen></iframe>
+                        <video id="genericPlayer" style="display:none; width:100%; height:100%; background:#000;" controls controlsList="nodownload"></video>
                     </div>
 
                     <div class="video-info-panel">
@@ -585,29 +592,65 @@
             loadMuxPlayer(videoUrl) {
                 const player = document.getElementById('muxPlayer');
                 const ytPlayer = document.getElementById('youtubePlayer');
+                const drivePlayer = document.getElementById('driveEmbed');
+                const genericPlayer = document.getElementById('genericPlayer');
 
-                if (!videoUrl) {
-                    player.style.display = '';
+                // Hide every player, then show only the one we need
+                const hideAll = () => {
+                    player.style.display = 'none';
+                    player.removeAttribute('playback-id');
                     ytPlayer.style.display = 'none';
                     ytPlayer.src = '';
-                    player.removeAttribute('playback-id');
+                    drivePlayer.style.display = 'none';
+                    drivePlayer.src = '';
+                    genericPlayer.style.display = 'none';
+                    genericPlayer.removeAttribute('src');
+                    genericPlayer.load();
+                };
+
+                if (!videoUrl) {
+                    hideAll();
+                    player.style.display = '';
                     player.setAttribute('placeholder', 'Video not available');
                     return;
                 }
 
                 const youtubeId = this.extractYouTubeId(videoUrl);
+                const driveId = this.extractGoogleDriveId(videoUrl);
+                const dropboxDirectUrl = this.convertDropboxUrl(videoUrl);
 
                 if (youtubeId) {
-                    // YouTube video - show iframe, hide mux-player
-                    player.style.display = 'none';
-                    player.removeAttribute('playback-id');
+                    // YouTube video
+                    hideAll();
                     ytPlayer.style.display = 'block';
                     ytPlayer.src = `https://www.youtube.com/embed/${youtubeId}?rel=0`;
                     this.trackVideoPlay();
+                } else if (driveId) {
+                    // Google Drive video - embed via Drive's preview iframe
+                    // Note: the file must be shared as "Anyone with the link" for this to work
+                    hideAll();
+                    drivePlayer.style.display = 'block';
+                    drivePlayer.src = `https://drive.google.com/file/d/${driveId}/preview`;
+                    this.trackVideoPlay();
+                } else if (dropboxDirectUrl) {
+                    // Dropbox video - play the raw file directly via HTML5 video
+                    hideAll();
+                    genericPlayer.style.display = 'block';
+                    genericPlayer.src = dropboxDirectUrl;
+                    genericPlayer.addEventListener('play', () => {
+                        this.trackVideoPlay();
+                    }, { once: true });
+                } else if (/^https?:\/\/.*\.(mp4|webm|ogg|mov|m3u8)(\?.*)?$/i.test(videoUrl)) {
+                    // Any other direct video file link
+                    hideAll();
+                    genericPlayer.style.display = 'block';
+                    genericPlayer.src = videoUrl;
+                    genericPlayer.addEventListener('play', () => {
+                        this.trackVideoPlay();
+                    }, { once: true });
                 } else {
-                    // Mux video - show mux-player, hide iframe
-                    ytPlayer.style.display = 'none';
-                    ytPlayer.src = '';
+                    // Mux video (fallback)
+                    hideAll();
                     player.style.display = '';
                     const playbackId = this.extractPlaybackId(videoUrl);
                     player.setAttribute('playback-id', playbackId);
@@ -623,6 +666,34 @@
                 // Matches youtube.com/watch?v=, youtube.com/embed/, youtube.com/shorts/, and youtu.be/ links
                 const match = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
                 return match ? match[1] : null;
+            }
+
+            extractGoogleDriveId(videoUrl) {
+                // Matches drive.google.com/file/d/FILE_ID/..., open?id=FILE_ID, and uc?id=FILE_ID
+                if (!/drive\.google\.com/i.test(videoUrl)) return null;
+                let match = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (match) return match[1];
+                match = videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (match) return match[1];
+                return null;
+            }
+
+            convertDropboxUrl(videoUrl) {
+                // Converts a Dropbox share link into a direct-streamable link.
+                // Handles both dropbox.com/s/... and dropbox.com/scl/fi/... share formats.
+                if (!/dropbox\.com/i.test(videoUrl)) return null;
+
+                try {
+                    const url = new URL(videoUrl);
+                    // Dropbox direct-content host serves the raw file instead of the share page
+                    url.hostname = 'dl.dropboxusercontent.com';
+                    // 'raw=1' tells Dropbox to skip the preview redirect and stream the file
+                    url.searchParams.delete('dl');
+                    url.searchParams.set('raw', '1');
+                    return url.toString();
+                } catch (e) {
+                    return null;
+                }
             }
 
             extractPlaybackId(videoUrl) {
