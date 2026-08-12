@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watch Video - LMS Platform</title>
-    <link rel="stylesheet" href="lms.css">
+    <link rel="stylesheet" href="/lms.css">
     <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@latest"></script>
     <style>
         .video-page-layout {
@@ -287,7 +287,7 @@
         <div class="auth-card">
             <h2>🔐 Authentication Required</h2>
             <p>Please log in to watch videos.</p>
-            <a href="login.html" class="cta-button">Go to Login</a>
+            <a href="/login.html" class="cta-button">Go to Login</a>
         </div>
     </div>
 
@@ -320,7 +320,7 @@
                 <div id="accessDenied" class="access-denied" style="display: none;">
                     <h2>🔒 Access Denied</h2>
                     <p>You don't have permission to view this content.</p>
-                    <a href="my-courses.html" class="cta-button">Back to My Courses</a>
+                    <a href="/my-courses.html" class="cta-button">Back to My Courses</a>
                 </div>
 
                 <!-- Video Content -->
@@ -373,7 +373,7 @@
 
     <!-- Load Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="router.js"></script>
+    <script src="/router.js"></script>
     <script>
         // Backend Configuration
         window.LMS_CONFIG = {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Course Details - LMS Platform</title>
-    <link rel="stylesheet" href="lms.css">
+    <link rel="stylesheet" href="/lms.css">
     <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@latest"></script>
     <style>
         .course-detail-page {
@@ -361,7 +361,7 @@
         <div class="auth-card">
             <h2>🔐 Authentication Required</h2>
             <p>Please log in to access course details.</p>
-            <a href="login.html" class="cta-button">Go to Login</a>
+            <a href="/login.html" class="cta-button">Go to Login</a>
         </div>
     </div>
 
@@ -385,9 +385,9 @@
         <div class="course-detail-page">
             <!-- Breadcrumb -->
             <div class="breadcrumb">
-                <a href="index.html">Home</a>
+                <a href="/index.html">Home</a>
                 <span>/</span>
-                <a href="my-courses.html">My Courses</a>
+                <a href="/my-courses.html">My Courses</a>
                 <span>/</span>
                 <span id="breadcrumbCourseTitle">Course</span>
             </div>
@@ -402,7 +402,7 @@
             <div id="errorState" style="display: none; text-align: center; padding: 4rem 2rem;">
                 <h2>⚠️ Course Not Found</h2>
                 <p>This course doesn't exist or you don't have access.</p>
-                <a href="my-courses.html" class="back-to-home">Back to My Courses</a>
+                <a href="/my-courses.html" class="back-to-home">Back to My Courses</a>
             </div>
 
             <!-- Course Content -->
@@ -472,7 +472,7 @@
 
     <!-- Load Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="router.js"></script>
+    <script src="/router.js"></script>
     <script>
         // Backend Configuration
         window.LMS_CONFIG = {

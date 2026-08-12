@@ -13,7 +13,53 @@ class LMSRouter {
         };
         
         this.currentParams = {};
+
+        // Snapshot which route is ACTUALLY loaded in the DOM right now, before
+        // anything (including our own history.pushState calls) can change
+        // window.location. This is what "are we already on the right page"
+        // must be compared against -- see loadPage() for why.
+        this.loadedRoute = this.resolveRoute(window.location.pathname);
+
         this.init();
+    }
+
+    // Pure route-matching: given a pathname, figure out which page/file it
+    // maps to and pull out any params (courseId, moduleId). Used both to
+    // record what's currently loaded and to figure out navigation targets,
+    // so the two can be compared consistently.
+    resolveRoute(pathname) {
+        const courseMatch = pathname.match(/^\/course\/([^\/]+)$/);
+        if (courseMatch) {
+            return { page: 'course-detail', file: 'course-detail.html', courseId: courseMatch[1] };
+        }
+
+        const videoMatch = pathname.match(/^\/video\/([^\/]+)\/([^\/]+)$/);
+        if (videoMatch) {
+            return { page: 'video-view', file: 'video-view.html', courseId: videoMatch[1], moduleId: videoMatch[2] };
+        }
+
+        if (/^\/checkout-status(?:\.html)?$/.test(pathname)) {
+            return { page: 'checkout-status', file: 'checkout-status.html' };
+        }
+
+        if (/^\/checkout(?:\.html)?$/.test(pathname)) {
+            return { page: 'checkout', file: 'checkout.html' };
+        }
+
+        if (pathname === '/my-courses' || pathname === '/my-courses.html') {
+            return { page: 'my-courses', file: 'my-courses.html' };
+        }
+
+        if (pathname === '/login' || pathname === '/login.html') {
+            return { page: 'login', file: 'login.html' };
+        }
+
+        if (pathname === '/admin' || pathname === '/admin.html') {
+            return { page: 'admin', file: 'admin.html' };
+        }
+
+        // '/', '/index.html', and anything unrecognized fall back to the dashboard
+        return { page: 'dashboard', file: 'index.html' };
     }
 
     init() {
@@ -72,49 +118,11 @@ class LMSRouter {
     }
 
     parseRouteParams(pathname) {
+        const route = this.resolveRoute(pathname);
         this.currentParams = {};
-        
-        // Match /course/:id
-        const courseMatch = pathname.match(/^\/course\/([^\/]+)$/);
-        if (courseMatch) {
-            this.currentParams.courseId = courseMatch[1];
-            this.currentParams.page = 'course-detail';
-            return;
-        }
-
-        // Match /video/:courseId/:moduleId
-        const videoMatch = pathname.match(/^\/video\/([^\/]+)\/([^\/]+)$/);
-        if (videoMatch) {
-            this.currentParams.courseId = videoMatch[1];
-            this.currentParams.moduleId = videoMatch[2];
-            this.currentParams.page = 'video-view';
-            return;
-        }
-
-        // Match /checkout-status
-        const checkoutStatusMatch = pathname.match(/^\/checkout-status(?:\.html)?$/);
-        if (checkoutStatusMatch) {
-            this.currentParams.page = 'checkout-status';
-            return;
-        }
-
-        // Match /checkout
-        const checkoutMatch = pathname.match(/^\/checkout(?:\.html)?$/);
-        if (checkoutMatch) {
-            this.currentParams.page = 'checkout';
-            return;
-        }
-
-        // Default routes
-        if (pathname === '/' || pathname === '/index.html') {
-            this.currentParams.page = 'dashboard';
-        } else if (pathname === '/my-courses' || pathname === '/my-courses.html') {
-            this.currentParams.page = 'my-courses';
-        } else if (pathname === '/login' || pathname === '/login.html') {
-            this.currentParams.page = 'login';
-        } else if (pathname === '/admin' || pathname === '/admin.html') {
-            this.currentParams.page = 'admin';
-        }
+        if (route.courseId !== undefined) this.currentParams.courseId = route.courseId;
+        if (route.moduleId !== undefined) this.currentParams.moduleId = route.moduleId;
+        this.currentParams.page = route.page;
     }
 
     async isAuthenticated() {
@@ -154,43 +162,36 @@ class LMSRouter {
     }
 
     async loadPage(pathname) {
-        // Determine which page to load
-        let targetPage = null;
+        const target = this.resolveRoute(pathname);
 
-        if (pathname === '/' || pathname === '/index.html') {
-            targetPage = 'index.html';
-        } else if (pathname === '/my-courses' || pathname === '/my-courses.html') {
-            targetPage = 'my-courses.html';
-        } else if (this.currentParams.page === 'course-detail') {
-            targetPage = 'course-detail.html';
-        } else if (this.currentParams.page === 'video-view') {
-            targetPage = 'video-view.html';
-        } else if (pathname === '/login' || pathname === '/login.html') {
-            targetPage = 'login.html';
-        } else if (pathname === '/admin' || pathname === '/admin.html') {
-            targetPage = 'admin.html';
-        } else if (this.currentParams.page === 'checkout') {
-            targetPage = 'checkout.html';
-        } else if (this.currentParams.page === 'checkout-status') {
-            targetPage = 'checkout-status.html';
-        } else {
-            // 404 - redirect to home
-            targetPage = 'index.html';
-        }
+        // "Are we already showing the right thing?" has to be checked against
+        // this.loadedRoute (captured once, before any pushState this session
+        // could have touched), NOT against window.location.pathname.split('/').pop().
+        // On Vercel, pretty routes like /course/45 are rewritten server-side to
+        // serve course-detail.html while the URL bar stays /course/45 -- so
+        // pathname.split('/').pop() gives "45", which will never equal
+        // "course-detail.html". That mismatch made this check always fail for
+        // every parameterized route, forcing an unnecessary full-page reload
+        // on every single navigation into a course or video page.
+        const sameFile = this.loadedRoute.file === target.file;
+        const sameResource = (target.page === 'course-detail' || target.page === 'video-view')
+            ? (this.loadedRoute.courseId === target.courseId && this.loadedRoute.moduleId === target.moduleId)
+            : true;
 
-        // If we're already on the right page, just trigger page initialization
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        if (currentPage === targetPage || 
-            (this.currentParams.page === 'course-detail' && currentPage === 'course-detail.html') ||
-            (this.currentParams.page === 'video-view' && currentPage === 'video-view.html')) {
-            
-            // Trigger page re-initialization for dynamic content
+        if (sameFile && sameResource) {
             this.triggerPageInit();
             return;
         }
 
-        // Navigate to the target page
-        window.location.href = targetPage;
+        // Navigate using the pretty path itself (e.g. "/course/45"), not a bare
+        // relative filename like "course-detail.html". A bare relative filename
+        // resolves against whatever directory-like path is currently in the
+        // address bar (which may already be a nested pretty URL, e.g. /course/12,
+        // from a previous pushState) and breaks -- e.g. resolving to
+        // /course/course-detail.html, which doesn't exist and can even get
+        // re-captured by Vercel's own /course/:id rewrite. Using the absolute
+        // pretty path also preserves courseId/moduleId across the reload.
+        window.location.href = pathname;
     }
 
     triggerPageInit() {
