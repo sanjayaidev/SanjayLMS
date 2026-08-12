@@ -245,11 +245,13 @@ class AdminPanel {
         submitBtn.disabled = true;
 
         const courseId = document.getElementById('courseId').value;
+        const priceUsdRaw = document.getElementById('coursePriceUsd').value;
         const courseData = {
             title: document.getElementById('courseTitle').value,
             description: document.getElementById('courseDescription').value,
             required_tier: document.getElementById('courseTier').value,
             price: parseFloat(document.getElementById('coursePrice').value),
+            price_usd: priceUsdRaw === '' ? null : parseFloat(priceUsdRaw),
             status: document.getElementById('courseStatus').value,
             is_active: document.getElementById('courseActive').checked
         };
@@ -455,7 +457,7 @@ class AdminPanel {
                             <h3>${course.title}</h3>
                             <div class="course-meta">
                                 <span class="course-tier">${course.required_tier.toUpperCase()} TIER</span>
-                                <span class="course-price">$${course.price}</span>
+                                <span class="course-price">₹${course.price}</span>
                                 <span class="course-status ${statusClass}">${statusText}</span>
                                 ${!course.is_active ? '<span class="course-status status-inactive">INACTIVE</span>' : ''}
                             </div>
@@ -728,6 +730,7 @@ class AdminPanel {
                 document.getElementById('courseDescription').value = course.description;
                 document.getElementById('courseTier').value = course.required_tier;
                 document.getElementById('coursePrice').value = course.price;
+                document.getElementById('coursePriceUsd').value = course.price_usd ?? '';
                 document.getElementById('courseStatus').value = course.status;
                 document.getElementById('courseActive').checked = course.is_active;
             }

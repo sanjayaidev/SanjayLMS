@@ -107,6 +107,7 @@
                 document.querySelectorAll('.provider-option').forEach(o => o.classList.remove('selected'));
                 el.classList.add('selected');
                 el.querySelector('input').checked = true;
+                if (course) updatePriceDisplay();
             });
         });
 
@@ -135,7 +136,7 @@
 
             const { data, error } = await supabase
                 .from('courses')
-                .select('id, title, price, thumbnail_url')
+                .select('id, title, price, price_usd, thumbnail_url')
                 .eq('id', courseId)
                 .eq('is_active', true)
                 .single();
@@ -169,9 +170,25 @@
             }
 
             document.getElementById('courseTitle').textContent = course.title;
-            document.getElementById('coursePrice').textContent = '$' + price.toFixed(2);
+            updatePriceDisplay();
             document.getElementById('checkoutLoading').style.display = 'none';
             document.getElementById('checkoutBody').style.display = 'block';
+
+            // Hide PayPal option entirely if this course has no USD price set
+            const usdPrice = parseFloat(course.price_usd);
+            if (!Number.isFinite(usdPrice) || usdPrice <= 0) {
+                document.querySelector('.provider-option[data-provider="paypal"]').style.display = 'none';
+            }
+        }
+
+        function updatePriceDisplay() {
+            const provider = selectedProvider();
+            const priceEl = document.getElementById('coursePrice');
+            if (provider === 'paypal') {
+                priceEl.textContent = '$' + parseFloat(course.price_usd).toFixed(2);
+            } else {
+                priceEl.textContent = '₹' + parseFloat(course.price).toFixed(2);
+            }
         }
 
         async function startPayment() {

@@ -44,7 +44,7 @@ async function getUser(token) {
 }
 
 async function getCourse(courseId) {
-  const rows = await svc('GET', `/courses?id=eq.${courseId}&is_active=eq.true&select=id,title,price&limit=1`);
+  const rows = await svc('GET', `/courses?id=eq.${courseId}&is_active=eq.true&select=id,title,price,price_usd&limit=1`);
   return rows?.[0] || null;
 }
 
@@ -77,13 +77,25 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'You already own this course', code: 'ALREADY_OWNED' });
   }
 
-  const amount = parseFloat(course.price);
-  if (!Number.isFinite(amount) || amount <= 0) {
+  const amountInr = parseFloat(course.price);
+  const amountUsd = parseFloat(course.price_usd);
+
+  if (provider === 'paypal' && (!Number.isFinite(amountUsd) || amountUsd <= 0)) {
+    return res.status(400).json({
+      error: 'This course does not have a USD price set — PayPal is unavailable for it. Use Razorpay instead.',
+      code:  'NO_USD_PRICE',
+    });
+  }
+  if (provider === 'razorpay' && (!Number.isFinite(amountInr) || amountInr <= 0)) {
     return res.status(400).json({
       error: 'This course is free — use /api/enroll-free instead of /api/create-order',
       code:  'COURSE_IS_FREE',
     });
   }
+
+  // The amount actually charged depends on which gateway was picked:
+  // Razorpay always settles in INR, PayPal always settles in USD here.
+  const amount = provider === 'razorpay' ? amountInr : amountUsd;
 
   const orderId    = 'crs' + Date.now() + crypto.randomBytes(3).toString('hex');
   const origin     = req.headers.origin || `https://${req.headers.host}`;
@@ -192,9 +204,8 @@ async function handlePaypal(res, { course, amount, orderId, course_id, origin, i
       return res.status(500).json({ error: 'PayPal token fetch failed' });
     }
 
-    // NOTE: PayPal settles in USD here. If you need INR settlement, PayPal
-    // requires a business account configured for that currency — swap
-    // currency_code accordingly and convert `amount` yourself.
+    // Settles in USD (course.price_usd), independent of the INR price used
+    // for Razorpay. Set courses.price_usd if you want PayPal enabled for a course.
     const ppRes = await fetch(`${ppBase}/v2/checkout/orders`, {
       method: 'POST',
       headers: {

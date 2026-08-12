@@ -185,8 +185,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="coursePrice">Price ($) *</label>
+                        <label for="coursePrice">Price (₹, Razorpay) *</label>
                         <input type="number" id="coursePrice" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="coursePriceUsd">Price ($, PayPal — optional)</label>
+                        <input type="number" id="coursePriceUsd" step="0.01" min="0" placeholder="Leave blank to disable PayPal">
                     </div>
                 </div>
 

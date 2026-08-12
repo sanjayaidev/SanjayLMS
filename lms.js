@@ -255,14 +255,14 @@ class LMSManager {
                     <p>${course.description}</p>
                     <div class="course-meta">
                         <span class="course-tier">${course.required_tier.toUpperCase()} TIER</span>
-                        <span class="course-price">$${course.price}</span>
+                        <span class="course-price">₹${course.price}${course.price_usd ? ` <small class="price-usd">($${course.price_usd} via PayPal)</small>` : ''}</span>
                         ${hasAccess ? `<span class="progress-badge">${courseProgress.percentage}% Complete</span>` : ''}
                     </div>
                     <div class="course-actions">
                         ${hasAccess ? 
                             `<button class="cta-button" onclick="lmsManager.viewCourse('${course.id}')">Continue Learning</button>` :
                             (canPurchase ?
-                                `<button class="cta-button purchase" onclick="lmsManager.purchaseCourse('${course.id}')">Purchase - $${course.price}</button>` :
+                                `<button class="cta-button purchase" onclick="lmsManager.purchaseCourse('${course.id}')">Purchase - ₹${course.price}</button>` :
                                 `<button class="cta-button disabled" disabled>Upgrade Tier Required</button>`
                             )
                         }
@@ -282,7 +282,7 @@ class LMSManager {
         document.getElementById('courseDetailTitle').textContent = this.currentCourse.title;
         document.getElementById('courseDetailDescription').textContent = this.currentCourse.description;
         document.getElementById('courseDetailTier').textContent = this.currentCourse.required_tier.toUpperCase() + ' TIER';
-        document.getElementById('courseDetailPrice').textContent = '$' + this.currentCourse.price;
+        document.getElementById('courseDetailPrice').textContent = '₹' + this.currentCourse.price;
 
         const courseProgress = this.getCourseProgress(courseId);
         document.getElementById('courseProgressBadge').textContent = `${courseProgress.percentage}% Complete`;

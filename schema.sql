@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS courses (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     thumbnail_url TEXT,
-    price DECIMAL(10, 2) DEFAULT 0.00,
+    price DECIMAL(10, 2) DEFAULT 0.00,           -- INR price, charged via Razorpay
+    price_usd DECIMAL(10, 2),                    -- USD price, charged via PayPal (NULL = PayPal disabled for this course)
     required_tier VARCHAR(50) DEFAULT 'basic' CHECK (required_tier IN ('basic', 'premium')),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
