@@ -137,8 +137,8 @@ class LMSRouter {
 
         if (!clientReady()) {
             const start = Date.now();
-            while (!clientReady() && Date.now() - start < 3000) {
-                await new Promise(resolve => setTimeout(resolve, 50));
+            while (!clientReady() && Date.now() - start < 5000) {
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
         }
 
@@ -148,7 +148,25 @@ class LMSRouter {
         }
 
         try {
-            const { data: { session } } = await window.supabase.auth.getSession();
+            // First attempt to get session
+            let { data: { session }, error } = await window.supabase.auth.getSession();
+            
+            // If no session but we have a user (token might need refresh), wait a bit and retry
+            if (!session && !error) {
+                const events = ['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'];
+                const start = Date.now();
+                
+                // Wait up to 3 seconds for a session to appear (in case refresh is in progress)
+                while (!session && Date.now() - start < 3000) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    ({ data: { session: newSession } } = await window.supabase.auth.getSession());
+                    if (newSession) {
+                        session = newSession;
+                        break;
+                    }
+                }
+            }
+            
             return !!session;
         } catch (error) {
             console.error('Auth check error:', error);
