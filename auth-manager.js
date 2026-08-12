@@ -182,12 +182,15 @@
     window.authManager = authManager;
 
     // Also expose supabase client directly for backward compatibility
-    Object.defineProperty(window, 'supabase', {
-        get: function() {
-            return authManager.getSupabase();
-        },
-        configurable: true
-    });
+    // Only define if not already defined by the SDK
+    if (!window.supabase || typeof window.supabase.from !== 'function') {
+        Object.defineProperty(window, 'supabase', {
+            get: function() {
+                return authManager.getSupabase();
+            },
+            configurable: true
+        });
+    }
 
     // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {
