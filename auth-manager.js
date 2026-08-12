@@ -79,7 +79,17 @@
         _createClient() {
             if (!supabaseClient) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
+
+                // IMPORTANT: window.supabase at this point is the SDK's UMD
+                // namespace object (has .createClient but no .from etc).
+                // The SDK bundle declares it with a top-level `var`, which
+                // makes the window property non-configurable - Object.
+                // defineProperty can never redefine it (that's what used to
+                // crash here). A plain assignment still works fine though,
+                // since the property remains writable. This swaps window.
+                // supabase over to the real, usable client instance.
+                window.supabase = supabaseClient;
+
                 // Set up auth state change listener
                 supabaseClient.auth.onAuthStateChange((event, session) => {
                     console.log('[AuthManager] Auth state changed:', event);
@@ -191,26 +201,9 @@
     window.AuthManager = authManager;
     window.authManager = authManager;
 
-    // Also expose supabase client directly for backward compatibility
-    // Only define if not already defined by the SDK
-    if (!window.supabase || typeof window.supabase.from !== 'function') {
-        try {
-            Object.defineProperty(window, 'supabase', {
-                get: function() {
-                    return authManager.getSupabase();
-                },
-                configurable: true
-            });
-        } catch (err) {
-            // window.supabase already exists as a non-configurable property
-            // (e.g. this script ran before under a stale page state). Don't
-            // let this crash halt auth-manager init below - fall back to
-            // updating supabaseClient in place once _createClient() runs;
-            // consumers should prefer window.authManager.getSupabase().
-            console.warn('[AuthManager] Could not redefine window.supabase, ' +
-                'falling back to window.authManager.getSupabase():', err);
-        }
-    }
+    // Note: window.supabase is set directly (plain assignment) inside
+    // _createClient() above once the real client exists - see the comment
+    // there for why defineProperty is deliberately NOT used here.
 
     // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {
