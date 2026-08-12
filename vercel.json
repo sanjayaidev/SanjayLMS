@@ -1,4 +1,6 @@
 {
+  "framework": null,
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/my-courses", "destination": "/my-courses.html" },
     { "source": "/course/:id", "destination": "/course-detail.html" },

@@ -160,12 +160,11 @@ CREATE POLICY "Users can update their own profile"
     ON profiles FOR UPDATE
     USING (auth.uid() = id);
 
--- TODO: replace 'YOUR_ADMIN_EMAIL@example.com' with your own admin email
 CREATE POLICY "Admins can view all profiles"
     ON profiles FOR SELECT
     USING (
         auth.uid() = id OR
-        COALESCE(auth.jwt() ->> 'email', '') = 'YOUR_ADMIN_EMAIL@example.com'
+        COALESCE(auth.jwt() ->> 'email', '') = 'graphicyin@gmail.com'
     );
 
 -- Courses policies (public read for active courses)
