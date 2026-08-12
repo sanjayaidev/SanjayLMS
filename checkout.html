@@ -208,8 +208,35 @@
                     },
                     body: JSON.stringify({ course_id: courseId, provider }),
                 });
+                
+                // Check if response is OK before parsing JSON
+                if (!res.ok) {
+                    // Try to get error message from response, fallback to status text
+                    let errorMsg = 'Could not start checkout';
+                    try {
+                        const contentType = res.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const errData = await res.json();
+                            errorMsg = errData.error || errorMsg;
+                        } else {
+                            // Response is likely HTML error page
+                            const text = await res.text();
+                            console.error('Server error response:', text.substring(0, 500));
+                            errorMsg = 'Server error. Please try again.';
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                    }
+                    throw new Error(errorMsg);
+                }
+                
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Could not start checkout');
+                if (!data.razorpay_order_id && provider === 'razorpay') {
+                    throw new Error('Invalid response from server');
+                }
+                if (!data.paypal_approval_url && provider === 'paypal') {
+                    throw new Error('Invalid response from server');
+                }
 
                 if (provider === 'razorpay') {
                     const options = {
