@@ -744,6 +744,20 @@ body {
 
 .course-actions {
     margin-top: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.cta-button.secondary {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+
+.cta-button.secondary:hover {
+    background: rgba(255, 107, 53, 0.1);
+    box-shadow: none;
 }
 
 .access-badge {
@@ -1266,6 +1280,9 @@ body.menu-open {
 
 .course-actions {
     margin-top: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .course-detail-header {

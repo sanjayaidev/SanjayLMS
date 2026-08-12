@@ -271,7 +271,8 @@ class LMSManager {
                         ${hasAccess ? 
                             `<button class="cta-button" onclick="lmsManager.viewCourse('${course.id}')">Continue Learning</button>` :
                             (canPurchase ?
-                                `<button class="cta-button purchase" onclick="lmsManager.purchaseCourse('${course.id}')">Purchase - ₹${course.price}</button>` :
+                                `<button class="cta-button secondary" onclick="window.lmsRouter.goToCourse('${course.id}')">🔓 Preview Course</button>
+                                 <button class="cta-button purchase" onclick="lmsManager.purchaseCourse('${course.id}')">Purchase - ₹${course.price}</button>` :
                                 `<button class="cta-button disabled" disabled>Upgrade Tier Required</button>`
                             )
                         }
