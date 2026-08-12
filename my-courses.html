@@ -185,7 +185,8 @@
 
     <!-- Load Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="router.js"></script>
+    <script src="/auth-manager.js"></script>
+    <script src="/router.js"></script>
     <script>
         // Backend Configuration
         window.LMS_CONFIG = {
@@ -194,13 +195,6 @@
             API_BASE_URL: '/api',
             USE_PRISMA_API: false
         };
-
-        // Initialize Supabase
-        const supabase = window.supabase.createClient(
-            window.LMS_CONFIG.SUPABASE_URL,
-            window.LMS_CONFIG.SUPABASE_ANON_KEY
-        );
-        window.supabase = supabase;
 
         // My Courses Page Manager
         class MyCoursesPage {
@@ -221,7 +215,17 @@
             }
 
             async checkAuth() {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Use centralized AuthManager if available
+                const authManager = window.AuthManager || window.authManager;
+                let session;
+                
+                if (authManager && typeof authManager.refreshSession === 'function') {
+                    session = await authManager.refreshSession();
+                } else {
+                    // Fallback to direct supabase call
+                    const { data: { session: s } } = await window.supabase.auth.getSession();
+                    session = s;
+                }
                 
                 if (!session) {
                     document.getElementById('authRequired').style.display = 'block';
@@ -241,7 +245,7 @@
             }
 
             async loadUserProfile() {
-                const { data } = await supabase
+                const { data } = await window.supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', this.currentUser.id)
@@ -254,7 +258,7 @@
             }
 
             async loadMyCourses() {
-                const { data } = await supabase
+                const { data } = await window.supabase
                     .from('user_courses')
                     .select('*')
                     .eq('user_id', this.currentUser.id)
@@ -264,7 +268,7 @@
 
                 // Load course details for each
                 for (const uc of this.myCourses) {
-                    const { data: course } = await supabase
+                    const { data: course } = await window.supabase
                         .from('courses')
                         .select('*')
                         .eq('id', uc.course_id)
@@ -383,7 +387,12 @@
             }
 
             async logout() {
-                await supabase.auth.signOut();
+                const authManager = window.AuthManager || window.authManager;
+                if (authManager && typeof authManager.signOut === 'function') {
+                    await authManager.signOut();
+                } else {
+                    await window.supabase.auth.signOut();
+                }
                 window.location.href = 'login.html';
             }
         }

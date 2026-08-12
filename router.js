@@ -126,13 +126,14 @@ class LMSRouter {
     }
 
     async isAuthenticated() {
-        // window.supabase is truthy as soon as the CDN SDK script loads --
-        // it starts out as the raw SDK namespace ({ createClient }) and only
-        // gets `.auth` once a page's own script actually calls createClient().
-        // A plain `if (!window.supabase)` check can't tell the difference, so
-        // it was passing straight through before the real client existed and
-        // this function was reporting "not authenticated" for logged-in users.
-        // Poll for an actual client (something with `.auth.getSession`) instead.
+        // Use centralized AuthManager if available, otherwise fall back to direct supabase check
+        const authManager = window.AuthManager || window.authManager;
+        
+        if (authManager && typeof authManager.isAuthenticated === 'function') {
+            return await authManager.isAuthenticated();
+        }
+
+        // Fallback to direct supabase check for backward compatibility
         const clientReady = () => !!(window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function');
 
         if (!clientReady()) {

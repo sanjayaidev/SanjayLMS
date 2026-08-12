@@ -472,6 +472,7 @@
 
     <!-- Load Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/auth-manager.js"></script>
     <script src="/router.js"></script>
     <script>
         // Backend Configuration
@@ -481,13 +482,6 @@
             API_BASE_URL: '/api',
             USE_PRISMA_API: false
         };
-
-        // Initialize Supabase
-        const supabase = window.supabase.createClient(
-            window.LMS_CONFIG.SUPABASE_URL,
-            window.LMS_CONFIG.SUPABASE_ANON_KEY
-        );
-        window.supabase = supabase;
 
         // Course Detail Page Manager
         class CourseDetailPage {
@@ -524,7 +518,17 @@
             }
 
             async checkAuth() {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Use centralized AuthManager if available
+                const authManager = window.AuthManager || window.authManager;
+                let session;
+                
+                if (authManager && typeof authManager.refreshSession === 'function') {
+                    session = await authManager.refreshSession();
+                } else {
+                    // Fallback to direct supabase call
+                    const { data: { session: s } } = await window.supabase.auth.getSession();
+                    session = s;
+                }
                 
                 if (!session) {
                     document.getElementById('authRequired').style.display = 'block';
@@ -542,7 +546,7 @@
             }
 
             async loadUserProfile() {
-                const { data } = await supabase
+                const { data } = await window.supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', this.currentUser.id)
@@ -561,7 +565,7 @@
                 document.getElementById('errorState').style.display = 'none';
 
                 // Check if user has access (purchased & paid)
-                const { data: userCourse } = await supabase
+                const { data: userCourse } = await window.supabase
                     .from('user_courses')
                     .select('*')
                     .eq('user_id', this.currentUser.id)
@@ -574,7 +578,7 @@
                 this.hasPurchased = !!userCourse;
 
                 // Load course details
-                const { data: course } = await supabase
+                const { data: course } = await window.supabase
                     .from('courses')
                     .select('*')
                     .eq('id', courseId)
@@ -591,7 +595,7 @@
                 // Load modules — via the public view, which deliberately excludes
                 // video_url. The actual playable URL is fetched only on the video
                 // page, through the get_module_video_url() RPC, after access checks.
-                const { data: modules } = await supabase
+                const { data: modules } = await window.supabase
                     .from('course_modules_public')
                     .select('*')
                     .eq('course_id', courseId)
@@ -600,7 +604,7 @@
                 this.modules = modules || [];
 
                 // Load downloads
-                const { data: downloads } = await supabase
+                const { data: downloads } = await window.supabase
                     .from('course_downloads')
                     .select('*')
                     .eq('course_id', courseId)
@@ -609,7 +613,7 @@
                 this.downloads = downloads || [];
 
                 // Load user progress
-                const { data: progress } = await supabase
+                const { data: progress } = await window.supabase
                     .from('user_progress')
                     .select('*')
                     .eq('user_id', this.currentUser.id);
@@ -755,7 +759,12 @@
             }
 
             async logout() {
-                await supabase.auth.signOut();
+                const authManager = window.AuthManager || window.authManager;
+                if (authManager && typeof authManager.signOut === 'function') {
+                    await authManager.signOut();
+                } else {
+                    await window.supabase.auth.signOut();
+                }
                 window.location.href = 'login.html';
             }
         }
