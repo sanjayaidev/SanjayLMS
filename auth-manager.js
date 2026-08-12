@@ -5,6 +5,16 @@
 (function() {
     'use strict';
 
+    // Guard against this script executing more than once on the same page
+    // (e.g. re-injected during client-side navigation). Without this guard,
+    // a second run can crash on Object.defineProperty below and leave
+    // window.supabase pointing at the raw SDK namespace instead of the
+    // live client, which is what causes "supabase.from is not a function".
+    if (window.__authManagerLoaded) {
+        return;
+    }
+    window.__authManagerLoaded = true;
+
     // Configuration - Use window.LMS_CONFIG if available, otherwise use defaults
     const SUPABASE_URL = (window.LMS_CONFIG && window.LMS_CONFIG.SUPABASE_URL) || 
                          'https://bvavtdyxuzzabzgodbjw.supabase.co';
@@ -184,12 +194,22 @@
     // Also expose supabase client directly for backward compatibility
     // Only define if not already defined by the SDK
     if (!window.supabase || typeof window.supabase.from !== 'function') {
-        Object.defineProperty(window, 'supabase', {
-            get: function() {
-                return authManager.getSupabase();
-            },
-            configurable: true
-        });
+        try {
+            Object.defineProperty(window, 'supabase', {
+                get: function() {
+                    return authManager.getSupabase();
+                },
+                configurable: true
+            });
+        } catch (err) {
+            // window.supabase already exists as a non-configurable property
+            // (e.g. this script ran before under a stale page state). Don't
+            // let this crash halt auth-manager init below - fall back to
+            // updating supabaseClient in place once _createClient() runs;
+            // consumers should prefer window.authManager.getSupabase().
+            console.warn('[AuthManager] Could not redefine window.supabase, ' +
+                'falling back to window.authManager.getSupabase():', err);
+        }
     }
 
     // Auto-initialize when DOM is ready
