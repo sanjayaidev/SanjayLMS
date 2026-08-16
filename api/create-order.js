@@ -1,8 +1,8 @@
 // /api/create-order.js
 //
-// Creates a payment order for a course purchase via Razorpay or PayPal.
-// Adapted from sanjayaidev/donationalert's create-order.js, trimmed to the
-// two gateways this app uses and rewired for course purchases instead of
+// Creates a payment order for a course purchase via Razorpay, PayPal, or
+// Cashfree. Adapted from sanjayaidev/donationalert's create-order.js, trimmed
+// to the gateways this app uses and rewired for course purchases instead of
 // one-off tips.
 //
 // SECURITY: the course price is always looked up server-side from Supabase.
@@ -66,8 +66,8 @@ export default async function handler(req, res) {
 
   const { course_id, provider } = req.body || {};
   if (!course_id) return res.status(400).json({ error: 'Missing course_id' });
-  if (!['razorpay', 'paypal'].includes(provider)) {
-    return res.status(400).json({ error: 'provider must be "razorpay" or "paypal"' });
+  if (!['razorpay', 'paypal', 'cashfree'].includes(provider)) {
+    return res.status(400).json({ error: 'provider must be "razorpay", "paypal", or "cashfree"' });
   }
 
   const course = await getCourse(course_id);
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       code:  'NO_USD_PRICE',
     });
   }
-  if (provider === 'razorpay' && (!Number.isFinite(amountInr) || amountInr <= 0)) {
+  if ((provider === 'razorpay' || provider === 'cashfree') && (!Number.isFinite(amountInr) || amountInr <= 0)) {
     return res.status(400).json({
       error: 'This course is free — use /api/enroll-free instead of /api/create-order',
       code:  'COURSE_IS_FREE',
@@ -94,8 +94,8 @@ export default async function handler(req, res) {
   }
 
   // The amount actually charged depends on which gateway was picked:
-  // Razorpay always settles in INR, PayPal always settles in USD here.
-  const amount = provider === 'razorpay' ? amountInr : amountUsd;
+  // Razorpay and Cashfree always settle in INR, PayPal always settles in USD here.
+  const amount = provider === 'paypal' ? amountUsd : amountInr;
 
   const orderId    = 'crs' + Date.now() + crypto.randomBytes(3).toString('hex');
   const origin     = req.headers.origin || `https://${req.headers.host}`;
@@ -111,13 +111,16 @@ export default async function handler(req, res) {
       provider,
       status:   'pending',
       amount,
-      currency: provider === 'razorpay' ? 'INR' : 'USD',
+      currency: provider === 'paypal' ? 'USD' : 'INR',
       ...extra,
     });
   }
 
   if (provider === 'razorpay') {
     return handleRazorpay(res, { course, amount, orderId, user, insertPendingOrder, isTestMode });
+  }
+  if (provider === 'cashfree') {
+    return handleCashfree(res, { course, amount, orderId, user, origin, insertPendingOrder, isTestMode });
   }
   return handlePaypal(res, { course, amount, orderId, course_id, origin, insertPendingOrder, isTestMode });
 }
@@ -168,6 +171,76 @@ async function handleRazorpay(res, { course, amount, orderId, user, insertPendin
     });
   } catch (err) {
     console.error('[Razorpay] exception', err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// ─── Cashfree ────────────────────────────────────────────────────────────────
+// Uses the Cashfree PG Orders API (2023-08-01). create-order here returns a
+// payment_session_id, which the client feeds to the Cashfree JS SDK
+// (cashfree.checkout()) to render drop-in checkout. Actual payment
+// confirmation is polled independently in verify-order.js — the
+// payment_session_id alone never grants access.
+async function handleCashfree(res, { course, amount, orderId, user, origin, insertPendingOrder, isTestMode }) {
+  const appId = isTestMode
+    ? (process.env.CASHFREE_TEST_APP_ID     || process.env.CASHFREE_APP_ID)
+    : process.env.CASHFREE_APP_ID;
+  const secretKey = isTestMode
+    ? (process.env.CASHFREE_TEST_SECRET_KEY || process.env.CASHFREE_SECRET_KEY)
+    : process.env.CASHFREE_SECRET_KEY;
+
+  if (!appId || !secretKey) {
+    return res.status(500).json({ error: 'Cashfree credentials not configured', code: 'MISSING_CREDENTIAL' });
+  }
+
+  const cfBase = isTestMode ? 'https://sandbox.cashfree.com/pg' : 'https://api.cashfree.com/pg';
+
+  try {
+    const cfRes = await fetch(`${cfBase}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'x-client-id':     appId,
+        'x-client-secret': secretKey,
+        'x-api-version':   '2023-08-01',
+      },
+      body: JSON.stringify({
+        order_id:       orderId,
+        order_amount:   amount,
+        order_currency: 'INR',
+        customer_details: {
+          customer_id:    user.id,
+          customer_email: user.email,
+          // Cashfree requires a phone number on the order. Profiles in this
+          // app don't collect one, so fall back to a placeholder — swap in
+          // a real collected number here if you add a phone field later.
+          customer_phone: user.phone || '9999999999',
+        },
+        order_meta: {
+          return_url: `${origin}/checkout-status.html?order_id=${orderId}&provider=cashfree&course_id=${course.id}`,
+        },
+        order_note: `Course: ${course.title}`.slice(0, 255),
+      }),
+    });
+    const order = await cfRes.json();
+
+    if (!cfRes.ok || !order.payment_session_id) {
+      console.error('[Cashfree] create-order error', order);
+      return res.status(502).json({ error: 'Cashfree order creation failed', details: order });
+    }
+
+    await insertPendingOrder({ provider_order_id: order.order_id || orderId });
+
+    return res.status(200).json({
+      order_id:                 orderId,
+      cashfree_payment_session: order.payment_session_id,
+      cashfree_mode:             isTestMode ? 'sandbox' : 'production',
+      amount,
+      currency: 'INR',
+      provider: 'cashfree',
+    });
+  } catch (err) {
+    console.error('[Cashfree] exception', err);
     return res.status(500).json({ error: err.message });
   }
 }

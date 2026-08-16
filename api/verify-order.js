@@ -1,13 +1,13 @@
 // /api/verify-order.js
 //
 // Polled by checkout-status.html every 3s. Independently re-checks payment
-// status with Razorpay/PayPal (never trusts params echoed back in the
-// redirect URL), and on confirmed payment is the ONLY place that grants
+// status with Razorpay/PayPal/Cashfree (never trusts params echoed back in
+// the redirect URL), and on confirmed payment is the ONLY place that grants
 // course access by writing to user_courses.
 //
 // Adapted from sanjayaidev/donationalert's verify-order.js, trimmed to
-// Razorpay + PayPal and rewired to grant course access instead of firing
-// a StreamElements alert.
+// Razorpay + PayPal + Cashfree and rewired to grant course access instead of
+// firing a StreamElements alert.
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -70,6 +70,39 @@ async function grantCourseAccess(order, providerOrderId) {
 }
 
 // ─── Provider status checkers ────────────────────────────────────────────────
+async function checkCashfree(order) {
+  const appId = isTestMode
+    ? (process.env.CASHFREE_TEST_APP_ID     || process.env.CASHFREE_APP_ID)
+    : process.env.CASHFREE_APP_ID;
+  const secretKey = isTestMode
+    ? (process.env.CASHFREE_TEST_SECRET_KEY || process.env.CASHFREE_SECRET_KEY)
+    : process.env.CASHFREE_SECRET_KEY;
+  if (!appId || !secretKey) throw new Error('Cashfree credentials missing');
+
+  const cfBase = isTestMode ? 'https://sandbox.cashfree.com/pg' : 'https://api.cashfree.com/pg';
+
+  const res = await fetch(`${cfBase}/orders/${encodeURIComponent(order.order_id)}`, {
+    headers: {
+      'x-client-id':     appId,
+      'x-client-secret': secretKey,
+      'x-api-version':   '2023-08-01',
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error('Cashfree fetch error: ' + JSON.stringify(data));
+
+  // order_status: ACTIVE | PAID | EXPIRED | TERMINATED
+  if (data.order_status !== 'PAID') {
+    return { paid: false, status: (data.order_status || 'not_found').toLowerCase() };
+  }
+
+  return {
+    paid:              true,
+    provider_order_id: data.cf_order_id || data.order_id,
+    amount:            parseFloat(data.order_amount ?? order.amount),
+  };
+}
+
 async function checkRazorpay(order) {
   const keyId = isTestMode
     ? (process.env.RAZORPAY_TEST_KEY_ID     || process.env.RAZORPAY_KEY_ID)
@@ -166,7 +199,9 @@ export default async function handler(req, res) {
 
     let result;
     try {
-      result = order.provider === 'razorpay' ? await checkRazorpay(order) : await checkPaypal(order);
+      result = order.provider === 'razorpay' ? await checkRazorpay(order)
+              : order.provider === 'cashfree' ? await checkCashfree(order)
+              : await checkPaypal(order);
     } catch (err) {
       console.error(`[verify-order] provider check error (${order.provider}):`, err.message);
       // Provider hiccup — report pending, not failed, so the client keeps polling.

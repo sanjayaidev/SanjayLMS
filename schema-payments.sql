@@ -2,7 +2,8 @@
 -- PAYMENT INTEGRATION SCHEMA
 -- Run this AFTER schema.sql and schema-extensions.sql.
 --
--- Adds payment_orders (tracks pending/paid Razorpay + PayPal transactions)
+-- Adds payment_orders (tracks pending/paid Razorpay + PayPal + Cashfree
+-- transactions)
 -- and — importantly — CLOSES A SECURITY HOLE in the original schema:
 -- user_courses previously had an RLS policy letting any authenticated
 -- client INSERT a row with payment_status='completed' directly. Combined
@@ -25,7 +26,7 @@ CREATE TABLE IF NOT EXISTS payment_orders (
     order_id VARCHAR(64) UNIQUE NOT NULL,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    provider VARCHAR(20) NOT NULL CHECK (provider IN ('razorpay', 'paypal')),
+    provider VARCHAR(20) NOT NULL CHECK (provider IN ('razorpay', 'paypal', 'cashfree')),
     provider_order_id TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed')),
     amount NUMERIC(10, 2) NOT NULL,
@@ -54,6 +55,26 @@ CREATE POLICY "Users can view their own payment orders"
 CREATE TRIGGER update_payment_orders_updated_at
     BEFORE UPDATE ON payment_orders
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- MIGRATION: add Cashfree to an already-deployed table
+-- ============================================
+-- CREATE TABLE IF NOT EXISTS above is a no-op if payment_orders already
+-- exists (e.g. from before Cashfree was added), so the old
+-- provider IN ('razorpay','paypal') constraint would still be in place.
+-- Safe to run even on a fresh install — DROP/ADD are both idempotent-ish
+-- (DROP IF EXISTS won't error if the constraint name doesn't match yours;
+-- adjust the constraint name if your Postgres auto-named it differently).
+DO $$
+BEGIN
+    ALTER TABLE payment_orders DROP CONSTRAINT IF EXISTS payment_orders_provider_check;
+    ALTER TABLE payment_orders ADD CONSTRAINT payment_orders_provider_check
+        CHECK (provider IN ('razorpay', 'paypal', 'cashfree'));
+EXCEPTION WHEN undefined_table THEN
+    -- payment_orders doesn't exist yet — the CREATE TABLE above already
+    -- created it with the right constraint, nothing to do here.
+    NULL;
+END $$;
 
 -- ============================================
 -- CLOSE THE MOCK-PAYMENT HOLE

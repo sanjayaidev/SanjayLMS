@@ -6,6 +6,7 @@
     <title>Checkout - LMS Platform</title>
     <link rel="stylesheet" href="lms.css">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
     <style>
         .checkout-page {
             max-width: 560px;
@@ -67,6 +68,13 @@
                         <input type="radio" name="provider" value="razorpay" checked>
                         <div>
                             <div class="label">Razorpay</div>
+                            <div class="sub">UPI, Cards, NetBanking, Wallets</div>
+                        </div>
+                    </label>
+                    <label class="provider-option" data-provider="cashfree">
+                        <input type="radio" name="provider" value="cashfree">
+                        <div>
+                            <div class="label">Cashfree</div>
                             <div class="sub">UPI, Cards, NetBanking, Wallets</div>
                         </div>
                     </label>
@@ -236,6 +244,22 @@
                 }
                 if (!data.paypal_approval_url && provider === 'paypal') {
                     throw new Error('Invalid response from server');
+                }
+                if (!data.cashfree_payment_session && provider === 'cashfree') {
+                    throw new Error('Invalid response from server');
+                }
+
+                if (provider === 'cashfree') {
+                    // Drop-in checkout: SDK redirects to Cashfree's hosted page,
+                    // then back to the return_url set server-side in create-order
+                    // (checkout-status.html), which polls /api/verify-order —
+                    // same as every other provider, nothing trusted from the URL.
+                    const cashfree = await Cashfree({ mode: data.cashfree_mode === 'production' ? 'production' : 'sandbox' });
+                    cashfree.checkout({
+                        paymentSessionId: data.cashfree_payment_session,
+                        redirectTarget: '_self',
+                    });
+                    return;
                 }
 
                 if (provider === 'razorpay') {
