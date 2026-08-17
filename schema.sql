@@ -68,6 +68,10 @@ CREATE INDEX IF NOT EXISTS idx_course_modules_module_order ON course_modules(cou
 CREATE TABLE IF NOT EXISTS course_downloads (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    -- Nullable: if set, this resource belongs to ONE specific module and is
+    -- only shown/gated for that module. If NULL, it's a course-wide
+    -- resource (e.g. a syllabus) shown/gated at the course level.
+    module_id UUID REFERENCES course_modules(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     file_url TEXT NOT NULL,
@@ -79,6 +83,7 @@ CREATE TABLE IF NOT EXISTS course_downloads (
 
 -- Index for course downloads
 CREATE INDEX IF NOT EXISTS idx_course_downloads_course_id ON course_downloads(course_id);
+CREATE INDEX IF NOT EXISTS idx_course_downloads_module_id ON course_downloads(module_id);
 
 -- ============================================
 -- USER COURSES TABLE - Tracks which courses users have purchased

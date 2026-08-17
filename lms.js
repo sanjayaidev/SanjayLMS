@@ -247,9 +247,19 @@ class LMSManager {
         return userTierLevel >= moduleTierLevel && !(module.is_premium && this.userProfile?.subscription_tier !== 'premium');
     }
 
+    // Same access rule as modules: a module-scoped download follows that
+    // module's own rule (free-preview stays free; otherwise the course
+    // must be purchased + tier must match). A course-wide download
+    // (module_id === null) just needs the course purchased. Previously
+    // this checked an unrelated is_premium/subscription_tier flag that
+    // the purchase flow never actually set, so every download was visible
+    // to anyone regardless of purchase.
     hasDownloadAccess(download) {
-        if (!download.is_premium) return true;
-        return this.userProfile?.subscription_tier === 'premium';
+        if (download.module_id) {
+            const module = this.modules.find(m => m.id === download.module_id);
+            return module ? this.hasModuleAccess(module) : false;
+        }
+        return this.hasCourseAccess(download.course_id);
     }
 
     checkUpgradePrompt() {
@@ -566,13 +576,15 @@ class LMSManager {
     }
 
     // DOWNLOADS RENDERING
+    // Groups downloads by the module they're actually attached to (via
+    // module_id), so a resource added for Module 1 only ever shows under
+    // Module 1 — not on every module in the course.
     renderDownloads() {
         const downloadsList = document.getElementById('downloadsList');
         if (!downloadsList) return;
 
-        downloadsList.innerHTML = this.downloads.map(download => {
+        const renderItem = (download) => {
             const hasAccess = this.hasDownloadAccess(download);
-            
             return `
                 <div class="download-item ${!hasAccess ? 'locked' : ''}">
                     <div class="download-info">
@@ -580,18 +592,44 @@ class LMSManager {
                         <span class="file-size">${download.file_size}</span>
                     </div>
                     <div class="download-actions">
-                        ${!hasAccess ? 
-                            '<button class="btn-secondary" disabled>Premium Required</button>' :
+                        ${!hasAccess ?
+                            '<button class="btn-secondary" disabled>Locked</button>' :
                             `<a href="${download.file_url}" target="_blank" class="cta-button">Download</a>`
                         }
                     </div>
-                    ${!hasAccess ? 
-                        '<div class="premium-lock-message">Upgrade to Premium to download this resource</div>' : 
+                    ${!hasAccess ?
+                        '<div class="premium-lock-message">Enroll in this course to unlock this resource</div>' :
                         ''
                     }
                 </div>
             `;
-        }).join('');
+        };
+
+        const groups = this.modules
+            .map(module => ({
+                module,
+                items: this.downloads.filter(d => d.module_id === module.id)
+            }))
+            .filter(g => g.items.length > 0);
+
+        const generalItems = this.downloads.filter(d => !d.module_id);
+
+        if (groups.length === 0 && generalItems.length === 0) {
+            downloadsList.innerHTML = '<p style="color: #888;">No downloadable resources available.</p>';
+            return;
+        }
+
+        let html = '';
+        groups.forEach(({ module, items }) => {
+            html += `<h4 class="download-group-label">${module.title}</h4>`;
+            html += items.map(renderItem).join('');
+        });
+        if (generalItems.length > 0) {
+            html += `<h4 class="download-group-label">Course Resources</h4>`;
+            html += generalItems.map(renderItem).join('');
+        }
+
+        downloadsList.innerHTML = html;
     }
 
     // PROGRESS TRACKING

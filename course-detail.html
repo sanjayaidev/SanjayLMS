@@ -278,6 +278,19 @@
             border-bottom: none;
         }
 
+        .download-group-label {
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0.75rem 0 0.25rem;
+            padding-bottom: 0.25rem;
+        }
+
+        .download-group-label:first-child {
+            margin-top: 0;
+        }
+
         .download-icon {
             width: 40px;
             height: 40px;
@@ -722,22 +735,45 @@
                 }).join('');
             }
 
+            // A module-scoped download inherits that module's own access
+            // rule (free-preview modules stay free to everyone, everything
+            // else needs the course actually purchased + tier match — the
+            // same rule renderModules() already uses to lock/unlock
+            // modules). A course-wide download (module_id === null) just
+            // needs the course to be purchased. This replaces the old
+            // is_premium / subscription_tier check, which was unrelated to
+            // whether the course was ever bought.
             hasDownloadAccess(download) {
-                if (!download.is_premium) return true;
-                return this.userProfile?.subscription_tier === 'premium';
+                if (download.module_id) {
+                    const module = this.modules.find(m => m.id === download.module_id);
+                    // Module was removed/not found on this course — fail closed.
+                    return module ? this.hasModuleAccess(module) : false;
+                }
+                return this.hasPurchased;
             }
 
             renderDownloads() {
                 const container = document.getElementById('downloadsList');
-                
-                if (this.downloads.length === 0) {
+
+                // Only show a download under a module that actually exists
+                // in this course, in module order — this is what makes a
+                // "Module 1" resource show up only for Module 1.
+                const groups = this.modules
+                    .map(module => ({
+                        module,
+                        items: this.downloads.filter(d => d.module_id === module.id)
+                    }))
+                    .filter(g => g.items.length > 0);
+
+                const generalItems = this.downloads.filter(d => !d.module_id);
+
+                if (groups.length === 0 && generalItems.length === 0) {
                     container.innerHTML = '<li style="color: #888; padding: 1rem 0;">No downloadable resources available.</li>';
                     return;
                 }
 
-                container.innerHTML = this.downloads.map(download => {
+                const renderItem = (download) => {
                     const hasAccess = this.hasDownloadAccess(download);
-                    
                     return `
                         <li class="download-item">
                             <div class="download-icon">📄</div>
@@ -745,13 +781,25 @@
                                 <div class="download-name">${download.name}</div>
                                 <div class="download-type">${download.file_type || 'PDF'}</div>
                             </div>
-                            ${hasAccess ? 
+                            ${hasAccess ?
                                 `<button class="download-btn" onclick="window.open('${download.file_url}', '_blank')">Download</button>` :
-                                `<button class="download-btn disabled">Premium</button>`
+                                `<button class="download-btn disabled">🔒 Locked</button>`
                             }
                         </li>
                     `;
-                }).join('');
+                };
+
+                let html = '';
+                groups.forEach(({ module, items }) => {
+                    html += `<li class="download-group-label">${module.title}</li>`;
+                    html += items.map(renderItem).join('');
+                });
+                if (generalItems.length > 0) {
+                    html += `<li class="download-group-label">Course Resources</li>`;
+                    html += generalItems.map(renderItem).join('');
+                }
+
+                container.innerHTML = html;
             }
 
             setupEventListeners() {
