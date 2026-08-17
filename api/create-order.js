@@ -60,6 +60,21 @@ async function alreadyOwns(userId, courseId) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Fail fast with a clear message if the base Supabase env vars aren't set
+  // on this deployment, instead of letting it blow up as a cryptic
+  // "401 No API key found in request" three calls deep inside svc().
+  const missingBase = [];
+  if (!SUPABASE_URL)      missingBase.push('SUPABASE_URL');
+  if (!SUPABASE_ANON_KEY) missingBase.push('SUPABASE_ANON_KEY');
+  if (!SERVICE_KEY)       missingBase.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missingBase.length) {
+    console.error('[create-order] missing required env vars:', missingBase.join(', '));
+    return res.status(500).json({
+      error: `Server misconfigured — missing env var(s): ${missingBase.join(', ')}. Set these in Vercel Project Settings → Environment Variables and redeploy.`,
+      code:  'MISSING_ENV',
+    });
+  }
+
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const user  = await getUser(token);
   if (!user) return res.status(401).json({ error: 'Not authenticated', code: 'AUTH_REQUIRED' });

@@ -182,6 +182,19 @@ async function checkPaypal(order) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Same fail-fast check as create-order.js — surface missing env vars
+  // clearly instead of a buried "401 No API key found" from Supabase.
+  const missingBase = [];
+  if (!SUPABASE_URL) missingBase.push('SUPABASE_URL');
+  if (!SERVICE_KEY)  missingBase.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missingBase.length) {
+    console.error('[verify-order] missing required env vars:', missingBase.join(', '));
+    return res.status(500).json({
+      error: `Server misconfigured — missing env var(s): ${missingBase.join(', ')}. Set these in Vercel Project Settings → Environment Variables and redeploy.`,
+      code:  'MISSING_ENV',
+    });
+  }
+
   const { order_id } = req.body || {};
   if (!order_id) return res.status(400).json({ error: 'Missing order_id' });
 

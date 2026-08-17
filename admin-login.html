@@ -66,13 +66,16 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-manager.js"></script>
     <script>
-        // Supabase Configuration
-        const SUPABASE_URL = 'https://bvavtdyxuzzabzgodbjw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8';
-
-        // Initialize Supabase
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // This page used to create its own separate Supabase client
+        // (createClient(...)) here. That left a second, independent
+        // GoTrueClient instance around after redirecting into admin.html,
+        // which is what caused "already logged in but asked to log in
+        // again" style bugs elsewhere in the app — so this now reuses the
+        // shared client from auth-manager.js. `ready` resolves once that
+        // client is available.
+        const ready = (window.AuthManager || window.authManager).init();
 
         // SIMPLE ADMIN CHECK - TODO: replace with your own admin email(s) before deploying
         function isAdminUser(email) {
@@ -98,9 +101,11 @@
 
             try {
                 console.log('🚀 Attempting login for:', email);
-                
+
+                await ready;
+
                 // 1. Sign in
-                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -117,7 +122,7 @@
                 
                 if (!isAdmin) {
                     console.log('❌ Not an admin user:', authData.user.email);
-                    await supabaseClient.auth.signOut();
+                    await window.supabase.auth.signOut();
                     throw new Error('Admin privileges required. Only specific users can access the admin panel.');
                 }
 
@@ -148,7 +153,7 @@
         });
 
         // Check if already logged in
-        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        ready.then(() => window.supabase.auth.getSession()).then(({ data: { session } }) => {
             if (session?.user) {
                 console.log('📱 Already signed in as:', session.user.email);
                 document.getElementById('adminEmail').value = session.user.email;

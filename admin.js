@@ -907,14 +907,22 @@ function showSection(sectionId) {
 }
 
 // Initialize admin panel when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Supabase Configuration
-    const SUPABASE_URL = 'https://bvavtdyxuzzabzgodbjw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8';
+document.addEventListener('DOMContentLoaded', async function() {
+    // Reuse the shared AuthManager singleton client (same one admin-login.html
+    // now uses) instead of creating a second, independent GoTrueClient
+    // instance here. Two separate clients reading/writing the same session
+    // storage is what caused "already logged in but asked to log in again"
+    // bugs elsewhere in this app.
+    const authManager = window.AuthManager || window.authManager;
+    if (authManager && typeof authManager.init === 'function') {
+        await authManager.init();
+    } else {
+        // Fallback only if auth-manager.js somehow failed to load.
+        const SUPABASE_URL = 'https://bvavtdyxuzzabzgodbjw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8';
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
 
-    // Initialize Supabase
-    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
     // Initialize Admin Panel
     window.adminPanel = new AdminPanel();
 });

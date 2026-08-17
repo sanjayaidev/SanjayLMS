@@ -39,6 +39,19 @@ async function getUser(token) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Same fail-fast check as create-order.js / verify-order.js.
+  const missingBase = [];
+  if (!SUPABASE_URL)      missingBase.push('SUPABASE_URL');
+  if (!SUPABASE_ANON_KEY) missingBase.push('SUPABASE_ANON_KEY');
+  if (!SERVICE_KEY)       missingBase.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missingBase.length) {
+    console.error('[enroll-free] missing required env vars:', missingBase.join(', '));
+    return res.status(500).json({
+      error: `Server misconfigured — missing env var(s): ${missingBase.join(', ')}. Set these in Vercel Project Settings → Environment Variables and redeploy.`,
+      code:  'MISSING_ENV',
+    });
+  }
+
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const user  = await getUser(token);
   if (!user) return res.status(401).json({ error: 'Not authenticated', code: 'AUTH_REQUIRED' });

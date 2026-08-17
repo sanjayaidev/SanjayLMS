@@ -96,16 +96,19 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/auth-manager.js"></script>
     <script>
         window.LMS_CONFIG = {
             SUPABASE_URL: 'https://bvavtdyxuzzabzgodbjw.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8'
         };
 
-        const supabaseClient = window.supabase.createClient(
-            window.LMS_CONFIG.SUPABASE_URL,
-            window.LMS_CONFIG.SUPABASE_ANON_KEY
-        );
+        // This page used to spin up its own second Supabase client here
+        // (window.supabase.createClient(...)). Having two independent
+        // GoTrueClient instances alive at once is what caused "you're
+        // logged in but this page still sends you to login" on other pages
+        // in this app — so checkout now reuses the single shared client
+        // from auth-manager.js, same as every other authenticated page.
 
         const params   = new URLSearchParams(location.search);
         const courseId = params.get('course');
@@ -137,14 +140,27 @@
                 return;
             }
 
-            const { data: { session: s } } = await supabaseClient.auth.getSession();
-            session = s;
+            // Use the shared AuthManager singleton if available; fall back
+            // to a direct client only if auth-manager.js failed to load.
+            const authManager = window.AuthManager || window.authManager;
+            if (authManager && typeof authManager.init === 'function') {
+                await authManager.init();
+                session = await authManager.refreshSession();
+            } else {
+                window.supabase = window.supabase.createClient(
+                    window.LMS_CONFIG.SUPABASE_URL,
+                    window.LMS_CONFIG.SUPABASE_ANON_KEY
+                );
+                const { data: { session: s } } = await window.supabase.auth.getSession();
+                session = s;
+            }
+
             if (!session) {
                 location.href = `/login.html?next=${encodeURIComponent(location.pathname + location.search)}`;
                 return;
             }
 
-            const { data, error } = await supabaseClient
+            const { data, error } = await window.supabase
                 .from('courses')
                 .select('id, title, price, price_usd, thumbnail_url')
                 .eq('id', courseId)
