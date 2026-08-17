@@ -5,6 +5,7 @@ class AdminPanel {
         this.courses = [];
         this.students = [];
         this.modules = [];
+        this.downloads = [];
         this.filteredCourses = [];
         this.currentFilter = 'all';
         this.currentCourseId = null;
@@ -79,6 +80,9 @@ class AdminPanel {
 
         // Module form
         document.getElementById('moduleForm').addEventListener('submit', (e) => this.handleModuleSubmit(e));
+
+        // Download / resource form
+        document.getElementById('downloadForm').addEventListener('submit', (e) => this.handleDownloadSubmit(e));
 
         // Mobile menu
         this.setupMobileMenu();
@@ -198,6 +202,26 @@ class AdminPanel {
             console.error('Error loading modules:', error);
             this.showMessage('Error loading modules: ' + error.message, 'error');
             this.modules = [];
+        }
+    }
+
+    async loadDownloads(courseId) {
+        try {
+            const { data, error } = await supabase
+                .from('course_downloads')
+                .select('*')
+                .eq('course_id', courseId)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            this.downloads = data || [];
+            this.renderModules();
+            this.renderCourseDownloads();
+
+        } catch (error) {
+            console.error('Error loading downloads:', error);
+            this.downloads = [];
         }
     }
 
@@ -433,6 +457,92 @@ class AdminPanel {
         );
     }
 
+    // DOWNLOADS / RESOURCES CRUD OPERATIONS
+    async handleDownloadSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('downloadSubmitBtn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline';
+        submitBtn.disabled = true;
+
+        const downloadId = document.getElementById('downloadId').value;
+        const courseId = document.getElementById('downloadCourseId').value;
+        const moduleIdRaw = document.getElementById('downloadModuleId').value;
+
+        const downloadData = {
+            course_id: courseId,
+            // Empty selection = whole-course resource, not tied to any module.
+            module_id: moduleIdRaw === '' ? null : moduleIdRaw,
+            title: document.getElementById('downloadTitle').value,
+            description: document.getElementById('downloadDescription').value,
+            file_url: document.getElementById('downloadFileUrl').value,
+            file_type: document.getElementById('downloadFileType').value,
+            file_size: document.getElementById('downloadFileSize').value
+        };
+
+        try {
+            if (downloadId) {
+                const { error } = await supabase
+                    .from('course_downloads')
+                    .update(downloadData)
+                    .eq('id', downloadId);
+
+                if (error) throw error;
+                this.showMessage('✅ Resource updated successfully!', 'success');
+            } else {
+                const { error } = await supabase
+                    .from('course_downloads')
+                    .insert([downloadData]);
+
+                if (error) throw error;
+                this.showMessage('✅ Resource added successfully!', 'success');
+            }
+
+            await this.loadDownloads(courseId);
+            this.closeDownloadModal();
+
+        } catch (error) {
+            console.error('Error saving resource:', error);
+            this.showMessage('❌ Error saving resource: ' + error.message, 'error');
+        } finally {
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    }
+
+    async deleteDownload(downloadId) {
+        const download = this.downloads.find(d => d.id === downloadId);
+        if (!download) return;
+
+        this.showConfirmModal(
+            'Delete Resource',
+            `Are you sure you want to delete "${download.title}"? This action cannot be undone.`,
+            async () => {
+                try {
+                    const { error } = await supabase
+                        .from('course_downloads')
+                        .delete()
+                        .eq('id', downloadId);
+
+                    if (error) throw error;
+
+                    await this.loadDownloads(this.currentCourseId);
+                    this.showMessage('✅ Resource deleted successfully!', 'success');
+                    this.closeConfirmModal();
+
+                } catch (error) {
+                    console.error('Error deleting resource:', error);
+                    this.showMessage('❌ Error deleting resource: ' + error.message, 'error');
+                }
+            }
+        );
+    }
+
     // COURSES RENDERING AND FILTERING
     renderCourses() {
         const container = document.getElementById('adminCoursesList');
@@ -539,6 +649,20 @@ class AdminPanel {
         }
 
         container.innerHTML = this.modules.map(module => {
+            const moduleDownloads = this.downloads.filter(d => d.module_id === module.id);
+
+            const downloadsHTML = moduleDownloads.length > 0 ? `
+                <div class="module-downloads">
+                    ${moduleDownloads.map(d => `
+                        <div class="module-download-chip">
+                            <span>📄 ${d.title}</span>
+                            <button class="btn-small" onclick="adminPanel.openDownloadModal('${this.currentCourseId}', '${module.id}', '${d.id}')">Edit</button>
+                            <button class="btn-small btn-danger" onclick="adminPanel.deleteDownload('${d.id}')">Delete</button>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
             return `
                 <div class="module-item">
                     <div class="module-info">
@@ -551,14 +675,38 @@ class AdminPanel {
                             ${module.is_preview ? '<span class="course-tier" style="background:#2ecc71;">🔓 FREE PREVIEW</span>' : ''}
                         </div>
                         <p style="color: #ccc; margin-top: 0.5rem; font-size: 0.9rem;">${module.description}</p>
+                        ${downloadsHTML}
                     </div>
                     <div class="module-actions">
+                        <button class="btn-small" onclick="adminPanel.openDownloadModal('${this.currentCourseId}', '${module.id}')">+ Resource</button>
                         <button class="btn-small" onclick="adminPanel.openModuleModal('${this.currentCourseId}', '${module.id}')">Edit</button>
                         <button class="btn-small btn-danger" onclick="adminPanel.deleteModule('${module.id}')">Delete</button>
                     </div>
                 </div>
             `;
         }).join('');
+    }
+
+    // Whole-course resources (module_id === null) — shown separately from
+    // any specific module, e.g. a full syllabus PDF.
+    renderCourseDownloads() {
+        const container = document.getElementById('courseDownloadsListView');
+        if (!container) return;
+
+        const courseDownloads = this.downloads.filter(d => !d.module_id);
+
+        if (courseDownloads.length === 0) {
+            container.innerHTML = `<p style="color:#888; font-size:0.85rem;">No whole-course resources yet.</p>`;
+            return;
+        }
+
+        container.innerHTML = courseDownloads.map(d => `
+            <div class="module-download-chip">
+                <span>📄 ${d.title}</span>
+                <button class="btn-small" onclick="adminPanel.openDownloadModal('${this.currentCourseId}', '', '${d.id}')">Edit</button>
+                <button class="btn-small btn-danger" onclick="adminPanel.deleteDownload('${d.id}')">Delete</button>
+            </div>
+        `).join('');
     }
 
     // STUDENTS MANAGEMENT
@@ -796,6 +944,57 @@ class AdminPanel {
         document.getElementById('moduleForm').reset();
     }
 
+    // preselectModuleId: pass a module id to default the "Attach To" dropdown
+    // (e.g. when opened via a module's "+ Resource" button). Pass '' / omit
+    // for whole-course resources.
+    openDownloadModal(courseId, preselectModuleId = '', downloadId = null) {
+        this.currentCourseId = courseId;
+        const modal = document.getElementById('downloadModal');
+        const title = document.getElementById('downloadModalTitle');
+        const form = document.getElementById('downloadForm');
+        const moduleSelect = document.getElementById('downloadModuleId');
+
+        document.getElementById('downloadCourseId').value = courseId;
+
+        // Populate the module dropdown from the currently loaded modules
+        // for this course every time the modal opens, so it can't go stale.
+        moduleSelect.innerHTML = '<option value="">🌐 Whole course (not tied to a module)</option>' +
+            this.modules
+                .slice()
+                .sort((a, b) => (a.module_order || 0) - (b.module_order || 0))
+                .map(m => `<option value="${m.id}">${m.module_order}. ${m.title}</option>`)
+                .join('');
+
+        if (downloadId) {
+            // Edit mode
+            const download = this.downloads.find(d => d.id === downloadId);
+            if (download) {
+                title.textContent = 'Edit Resource';
+                document.getElementById('downloadId').value = download.id;
+                moduleSelect.value = download.module_id || '';
+                document.getElementById('downloadTitle').value = download.title;
+                document.getElementById('downloadDescription').value = download.description || '';
+                document.getElementById('downloadFileUrl').value = download.file_url;
+                document.getElementById('downloadFileType').value = download.file_type || '';
+                document.getElementById('downloadFileSize').value = download.file_size || '';
+            }
+        } else {
+            // Create mode
+            title.textContent = 'Add Downloadable Resource';
+            form.reset();
+            document.getElementById('downloadId').value = '';
+            document.getElementById('downloadCourseId').value = courseId;
+            moduleSelect.value = preselectModuleId || '';
+        }
+
+        modal.classList.add('active');
+    }
+
+    closeDownloadModal() {
+        document.getElementById('downloadModal').classList.remove('active');
+        document.getElementById('downloadForm').reset();
+    }
+
     async viewModules(courseId) {
         this.currentCourseId = courseId;
         const course = this.courses.find(c => c.id === courseId);
@@ -806,6 +1005,7 @@ class AdminPanel {
             document.getElementById('modulesCourseDescription').textContent = course.description;
             
             await this.loadModules(courseId);
+            await this.loadDownloads(courseId);
             document.getElementById('modulesView').classList.add('active');
         }
     }
@@ -814,6 +1014,7 @@ class AdminPanel {
         document.getElementById('modulesView').classList.remove('active');
         this.currentCourseId = null;
         this.modules = [];
+        this.downloads = [];
     }
 
     showConfirmModal(title, message, confirmCallback) {

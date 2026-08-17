@@ -302,6 +302,73 @@
         </div>
     </div>
 
+    <!-- Download / Resource Modal -->
+    <div id="downloadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="downloadModalTitle">Add Downloadable Resource</h3>
+                <button class="close-btn" onclick="adminPanel.closeDownloadModal()">✕</button>
+            </div>
+            <form id="downloadForm" class="modal-form">
+                <input type="hidden" id="downloadId" value="">
+                <input type="hidden" id="downloadCourseId" value="">
+
+                <div class="form-group">
+                    <label for="downloadModuleId">Attach To *</label>
+                    <select id="downloadModuleId" required>
+                        <option value="">🌐 Whole course (not tied to a module)</option>
+                    </select>
+                    <small style="color:#888; display:block; margin-top:0.25rem;">
+                        Pick a module and this resource only shows there, and follows that
+                        module's own access — free if the module is a Free Preview,
+                        otherwise unlocked only once the course is purchased.
+                        "Whole course" resources (e.g. a syllabus) show separately and
+                        unlock once the course is purchased.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="downloadTitle">Title *</label>
+                    <input type="text" id="downloadTitle" required placeholder="e.g. Module 1 Slides (PDF)">
+                </div>
+
+                <div class="form-group">
+                    <label for="downloadDescription">Description</label>
+                    <textarea id="downloadDescription" rows="2" placeholder="Optional short description"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="downloadFileUrl">File / Redirect URL *</label>
+                    <input type="url" id="downloadFileUrl" required placeholder="https://... file link, Drive/Dropbox share link, or redirect URL">
+                    <small style="color:#888; display:block; margin-top:0.25rem;">
+                        Any URL works — a direct file, a Drive/Dropbox share link, or a
+                        redirect to an external page/tool. Opens in a new tab when clicked.
+                    </small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="downloadFileType">Type Label</label>
+                        <input type="text" id="downloadFileType" placeholder="e.g. PDF, ZIP, Link">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="downloadFileSize">Size (optional)</label>
+                        <input type="text" id="downloadFileSize" placeholder="e.g. 2.4 MB">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="adminPanel.closeDownloadModal()">Cancel</button>
+                    <button type="submit" class="cta-button" id="downloadSubmitBtn">
+                        <span class="btn-text">Save Resource</span>
+                        <span class="btn-loading" style="display: none;">Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Course Modules View -->
     <div id="modulesView" class="modal large-modal">
         <div class="modal-content">
@@ -315,12 +382,27 @@
                         <h4 id="modulesCourseTitle"></h4>
                         <p id="modulesCourseDescription"></p>
                     </div>
-                    <button class="cta-button" onclick="adminPanel.openModuleModal(adminPanel.currentCourseId)">
-                        <span class="action-icon">➕</span>
-                        Add Module
-                    </button>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn-secondary" onclick="adminPanel.openDownloadModal(adminPanel.currentCourseId)">
+                            <span class="action-icon">📥</span>
+                            Add Resource
+                        </button>
+                        <button class="cta-button" onclick="adminPanel.openModuleModal(adminPanel.currentCourseId)">
+                            <span class="action-icon">➕</span>
+                            Add Module
+                        </button>
+                    </div>
                 </div>
-                
+
+                <div class="modules-view-section">
+                    <h5 style="color:#888; text-transform:uppercase; font-size:0.8rem; letter-spacing:0.05em; margin: 1rem 0 0.5rem;">
+                        🌐 Whole-Course Resources
+                    </h5>
+                    <div class="downloads-list" id="courseDownloadsListView">
+                        <div class="loading-message">Loading resources...</div>
+                    </div>
+                </div>
+
                 <div class="modules-list" id="modulesListView">
                     <div class="loading-message">Loading modules...</div>
                 </div>
