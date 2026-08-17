@@ -129,12 +129,6 @@
             <button type="submit" class="cta-button">Sign In</button>
         </form>
 
-        <div class="divider">or</div>
-
-        <button id="googleLoginBtn" class="google-btn">
-            <span>G</span> Continue with Google
-        </button>
-
         <p style="text-align: center; margin-top: 1.5rem; color: #666;">
             Don't have an account? 
             <a href="#" id="showSignup" style="color: #667eea; text-decoration: none;">Sign up</a>
@@ -234,6 +228,12 @@
                 const email = document.getElementById('signupEmail').value;
                 const password = document.getElementById('signupPassword').value;
 
+                // Restrict signup to Gmail accounts only.
+                if (!isAllowedSignupEmail(email)) {
+                    showMessage('signupMessage', 'Only Gmail accounts (@gmail.com) can sign up.', 'error');
+                    return;
+                }
+
                 const { data, error } = await window.AuthManager.supabase.auth.signUp({
                     email,
                     password,
@@ -251,20 +251,6 @@
                 }
             });
 
-            // Google login
-            document.getElementById('googleLoginBtn').addEventListener('click', async () => {
-                const { data, error } = await window.AuthManager.supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                        redirectTo: window.location.origin + '/index.html'
-                    }
-                });
-
-                if (error) {
-                    showMessage('loginMessage', error.message, 'error');
-                }
-            });
-
             // Toggle between login and signup
             document.getElementById('showSignup').addEventListener('click', (e) => {
                 e.preventDefault();
@@ -278,6 +264,15 @@
                 document.querySelector('.login-container').style.display = 'block';
             });
         });
+
+        // Only allow @gmail.com addresses to sign up. Simple domain check —
+        // extend this array if more allowed domains are needed later.
+        const ALLOWED_SIGNUP_DOMAINS = ['gmail.com'];
+        function isAllowedSignupEmail(email) {
+            const parts = String(email).toLowerCase().split('@');
+            if (parts.length !== 2) return false;
+            return ALLOWED_SIGNUP_DOMAINS.includes(parts[1]);
+        }
 
         // Show message helper
         function showMessage(elementId, message, type) {
