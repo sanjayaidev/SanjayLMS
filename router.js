@@ -89,6 +89,7 @@ class LMSRouter {
     async handleRoute(path, isInitialLoad = true) {
         const url = new URL(path, window.location.origin);
         const pathname = url.pathname;
+        const fullPath = pathname + url.search;
         
         // Check authentication for protected routes
         const protectedRoutes = ['/', '/my-courses', '/course/', '/video/', '/admin'];
@@ -113,8 +114,9 @@ class LMSRouter {
             history.pushState({ path: pathname }, '', path);
         }
 
-        // Load the appropriate page
-        await this.loadPage(pathname);
+        // Load the appropriate page (pass the full path so query params
+        // like ?course=45 survive a full-page navigation, not just pathname)
+        await this.loadPage(fullPath);
     }
 
     parseRouteParams(pathname) {
@@ -184,7 +186,10 @@ class LMSRouter {
         window.location.href = `/login.html?redirect=${encodeURIComponent(currentPath)}`;
     }
 
-    async loadPage(pathname) {
+    async loadPage(path) {
+        // path may include a query string (e.g. "/checkout?course=45");
+        // route matching itself only cares about the pathname part.
+        const pathname = path.split('?')[0];
         const target = this.resolveRoute(pathname);
 
         // "Are we already showing the right thing?" has to be checked against
@@ -214,7 +219,9 @@ class LMSRouter {
         // /course/course-detail.html, which doesn't exist and can even get
         // re-captured by Vercel's own /course/:id rewrite. Using the absolute
         // pretty path also preserves courseId/moduleId across the reload.
-        window.location.href = pathname;
+        // Use the full path (with query string) so params like ?course=45
+        // aren't lost on pages like checkout.html that read them directly.
+        window.location.href = path;
     }
 
     triggerPageInit() {
