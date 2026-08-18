@@ -84,6 +84,9 @@ class AdminPanel {
         // Download / resource form
         document.getElementById('downloadForm').addEventListener('submit', (e) => this.handleDownloadSubmit(e));
 
+        // Grant course access form
+        document.getElementById('grantAccessForm').addEventListener('submit', (e) => this.handleGrantAccessSubmit(e));
+
         // Mobile menu
         this.setupMobileMenu();
     }
@@ -752,6 +755,7 @@ class AdminPanel {
                         </div>
                     </div>
                     <div class="student-actions">
+                        <button class="btn-small" onclick="adminPanel.openGrantAccessModal('${student.email}')">Grant Access</button>
                         <button class="btn-small" onclick="adminPanel.viewStudentDetails('${student.id}')">View Details</button>
                     </div>
                 </div>
@@ -812,6 +816,7 @@ class AdminPanel {
                         </div>
                     </div>
                     <div class="student-actions">
+                        <button class="btn-small" onclick="adminPanel.openGrantAccessModal('${student.email}')">Grant Access</button>
                         <button class="btn-small" onclick="adminPanel.viewStudentDetails('${student.id}')">View Details</button>
                     </div>
                 </div>
@@ -862,6 +867,94 @@ class AdminPanel {
         };
         
         document.getElementById('confirmModal').classList.add('active');
+    }
+
+    // GRANT COURSE ACCESS (add student + enroll + email)
+    openGrantAccessModal(prefillEmail = '') {
+        const modal = document.getElementById('grantAccessModal');
+        const form = document.getElementById('grantAccessForm');
+        form.reset();
+
+        document.getElementById('grantAccessEmail').value = prefillEmail || '';
+        document.getElementById('grantAccessSendEmail').checked = true;
+
+        // Populate the course dropdown fresh each time from whatever's loaded.
+        const courseSelect = document.getElementById('grantAccessCourse');
+        courseSelect.innerHTML = '<option value="">Select a course…</option>' +
+            this.courses
+                .slice()
+                .sort((a, b) => a.title.localeCompare(b.title))
+                .map(c => `<option value="${c.id}">${c.title}${c.is_active ? '' : ' (inactive)'}</option>`)
+                .join('');
+
+        modal.classList.add('active');
+    }
+
+    closeGrantAccessModal() {
+        document.getElementById('grantAccessModal').classList.remove('active');
+        document.getElementById('grantAccessForm').reset();
+    }
+
+    async handleGrantAccessSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('grantAccessSubmitBtn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+
+        const email = document.getElementById('grantAccessEmail').value.trim();
+        const full_name = document.getElementById('grantAccessFullName').value.trim();
+        const course_id = document.getElementById('grantAccessCourse').value;
+        const send_email = document.getElementById('grantAccessSendEmail').checked;
+
+        if (!email || !course_id) {
+            this.showMessage('Please enter a student email and choose a course.', 'error');
+            return;
+        }
+
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline';
+        submitBtn.disabled = true;
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('Your admin session expired — please log in again.');
+
+            const res = await fetch('/api/admin-grant-access', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ email, full_name, course_id, send_email }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to grant access');
+
+            let msg = result.is_new_user
+                ? `✅ Account created for ${email} and course access granted.`
+                : `✅ Course access granted to ${email}.`;
+            if (send_email && !result.email_sent) {
+                msg += result.email_configured
+                    ? ' (Notification email failed to send — check the server logs.)'
+                    : ' (Notification email not sent — email isn\'t configured on the server yet.)';
+            } else if (send_email && result.email_sent) {
+                msg += ' Notification email sent.';
+            }
+
+            this.showMessage(msg, 'success');
+            this.closeGrantAccessModal();
+            await this.loadStudents();
+            await this.loadStats();
+
+        } catch (error) {
+            console.error('Error granting access:', error);
+            this.showMessage('❌ ' + error.message, 'error');
+        } finally {
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            submitBtn.disabled = false;
+        }
     }
 
     // MODAL MANAGEMENT

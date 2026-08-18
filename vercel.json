@@ -11,7 +11,8 @@
     { "source": "/checkout-status", "destination": "/checkout-status.html" },
     { "source": "/api/create-order", "destination": "/api/create-order.js" },
     { "source": "/api/verify-order", "destination": "/api/verify-order.js" },
-    { "source": "/api/enroll-free", "destination": "/api/enroll-free.js" }
+    { "source": "/api/enroll-free", "destination": "/api/enroll-free.js" },
+    { "source": "/api/admin-grant-access", "destination": "/api/admin-grant-access.js" }
   ],
   "headers": [
     {

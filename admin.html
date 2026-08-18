@@ -142,8 +142,14 @@
         <div class="container">
             <div class="section-header">
                 <h2>Student Management</h2>
-                <div class="search-box">
-                    <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="adminPanel.searchStudents(this.value)">
+                <div class="header-actions">
+                    <div class="search-box">
+                        <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="adminPanel.searchStudents(this.value)">
+                    </div>
+                    <button class="cta-button" onclick="adminPanel.openGrantAccessModal()">
+                        <span class="action-icon">🎓</span>
+                        Add Student / Grant Access
+                    </button>
                 </div>
             </div>
 
@@ -363,6 +369,56 @@
                     <button type="submit" class="cta-button" id="downloadSubmitBtn">
                         <span class="btn-text">Save Resource</span>
                         <span class="btn-loading" style="display: none;">Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Grant Course Access Modal -->
+    <div id="grantAccessModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Student / Grant Course Access</h3>
+                <button class="close-btn" onclick="adminPanel.closeGrantAccessModal()">✕</button>
+            </div>
+            <form id="grantAccessForm" class="modal-form">
+                <p style="color:#888; font-size:0.9rem; margin-top:-0.5rem;">
+                    Enter a student's email and pick a course. If no account exists for that
+                    email yet, one is created automatically and the student gets an email to
+                    set their password — either way, they'll get access to the course right away.
+                </p>
+
+                <div class="form-group">
+                    <label for="grantAccessEmail">Student Email *</label>
+                    <input type="email" id="grantAccessEmail" required placeholder="student@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="grantAccessFullName">Full Name (only used if creating a new account)</label>
+                    <input type="text" id="grantAccessFullName" placeholder="Jane Doe">
+                </div>
+
+                <div class="form-group">
+                    <label for="grantAccessCourse">Course *</label>
+                    <select id="grantAccessCourse" required>
+                        <option value="">Select a course…</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="grantAccessSendEmail" checked>
+                        <span class="checkmark"></span>
+                        Email the student to let them know
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="adminPanel.closeGrantAccessModal()">Cancel</button>
+                    <button type="submit" class="cta-button" id="grantAccessSubmitBtn">
+                        <span class="btn-text">Grant Access</span>
+                        <span class="btn-loading" style="display: none;">Granting…</span>
                     </button>
                 </div>
             </form>
