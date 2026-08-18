@@ -26,7 +26,7 @@ const SERVICE_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // granted; the response just reports email_sent: false so the admin UI can
 // tell the admin to notify the student manually).
 const RESEND_API_KEY  = process.env.RESEND_API_KEY;
-const RESEND_FROM     = process.env.RESEND_FROM_EMAIL || 'LMS <onboarding@resend.dev>';
+const RESEND_FROM     = process.env.RESEND_FROM_EMAIL || 'Sanjay Meher <sanjay@mail.sanjaymeher.online>';
 
 // Same allow-list admin.js checks client-side. Override with a comma
 // separated ADMIN_EMAILS env var without touching code.
@@ -35,7 +35,7 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'graphicyin@gmail.com')
   .map(e => e.trim().toLowerCase())
   .filter(Boolean);
 
-const SITE_URL = process.env.SITE_URL || 'https://godot3dmp.vercel.app';
+const SITE_URL = process.env.SITE_URL || 'https://aicourse.sanjaymeher.online';
 
 // ─── Supabase helpers (service role — bypasses RLS) ─────────────────────────
 async function svc(method, path, body) {
