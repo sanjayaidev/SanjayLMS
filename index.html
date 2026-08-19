@@ -3,249 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LMS Dashboard - Learn</title>
+    <title>LMS Platform - Explore Courses</title>
     <link rel="stylesheet" href="lms.css">
-    <!-- Mux Player for video streaming -->
-    <script src="https://cdn.jsdelivr.net/npm/@mux/mux-player@latest"></script>
+    <style>
+        body { padding-top: 80px; }
+
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 3.5rem 2rem;
+            text-align: center;
+            color: white;
+        }
+
+        .hero h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.4rem;
+        }
+
+        .hero p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 1.05rem;
+        }
+
+        .catalog-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem 4rem;
+        }
+
+        .course-card {
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .course-image {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: linear-gradient(135deg, rgba(255,107,53,0.25), rgba(255,255,255,0.05));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .course-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .course-image .placeholder-icon {
+            font-size: 3rem;
+            opacity: 0.6;
+        }
+
+        .course-card-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .course-card-body h3 {
+            margin: 0 0 0.6rem 0;
+        }
+
+        .course-card-body .course-desc {
+            color: var(--light);
+            opacity: 0.85;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .course-price {
+            font-size: 1.3rem;
+        }
+
+        .empty-state, .loading-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--light);
+            opacity: 0.8;
+        }
+
+        .btn-know-more[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .login-btn {
+            display: inline-block;
+        }
+    </style>
 </head>
 <body>
-    <!-- Auth Required Screen -->
-    <div id="authRequired" class="auth-container">
-        <div class="auth-card">
-            <h2>🔐 Authentication Required</h2>
-            <p>Please log in to access your courses.</p>
-            <a href="login.html" class="cta-button">Go to Login</a>
-        </div>
-    </div>
-
-    <!-- Main Dashboard -->
-    <div id="dashboard" style="display: none;">
-        <!-- Header -->
-        <header class="main-header">
-            <div class="header-content">
-                <div class="logo">
-                    <h1>📚 LMS Platform</h1>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-content">
+            <a href="/" class="logo" style="text-decoration:none;">
+                <h1>📚 LMS Platform</h1>
+            </a>
+            <div class="user-info">
+                <!-- Logged-out state -->
+                <div id="loggedOutActions">
+                    <a href="login.html" class="cta-button small login-btn">Login</a>
                 </div>
-                <div class="user-info">
-                    <span class="user-email" id="userEmail">Loading...</span>
-                    <span class="user-tier" id="currentTier">Basic</span>
+                <!-- Logged-in state -->
+                <div id="loggedInActions" style="display: none; align-items: center; gap: 1rem;">
+                    <span class="user-email" id="userEmail"></span>
                     <a href="my-courses.html" class="btn-secondary">My Courses</a>
                     <button id="logoutBtn" class="btn-secondary">Logout</button>
                 </div>
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
-            </div>
-        </header>
-
-        <!-- Upgrade Banner -->
-        <div id="upgradeBanner" class="upgrade-banner" style="display: none;">
-            <div class="banner-content">
-                <span>🌟 Unlock premium courses and resources!</span>
-                <button onclick="showUpgradeModal()" class="cta-button small">Upgrade to Premium</button>
             </div>
         </div>
+    </header>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Courses View -->
-            <div id="coursesView">
-                <div class="section-header">
-                    <h2>Your Courses</h2>
-                    <div class="stats-bar">
-                        <span>Purchased: <strong id="purchasedCount">0</strong></span>
-                        <span>Completed: <strong id="completedCount">0</strong></span>
-                    </div>
-                </div>
-                <div id="coursesContainer" class="courses-grid">
-                    <!-- Courses will be rendered here -->
-                </div>
-            </div>
+    <!-- Hero -->
+    <section class="hero">
+        <h1>Explore Our Courses</h1>
+        <p>Browse the full catalog. Log in to purchase and start learning.</p>
+    </section>
 
-            <!-- Course Details View -->
-            <div id="courseDetailsView" style="display: none;">
-                <button onclick="backToCourses()" class="btn-secondary back-btn">← Back to Courses</button>
-                
-                <div class="course-detail-header">
-                    <h2 id="courseDetailTitle">Course Title</h2>
-                    <p id="courseDetailDescription">Course description will appear here.</p>
-                    <div class="course-meta-large">
-                        <span class="course-tier" id="courseDetailTier">BASIC TIER</span>
-                        <span class="course-price" id="courseDetailPrice">₹0.00</span>
-                        <span class="progress-badge" id="courseProgressBadge">0% Complete</span>
-                    </div>
-                </div>
+    <!-- Catalog -->
+    <main class="catalog-content">
+        <div id="loadingState" class="loading-state">Loading courses…</div>
 
-                <div class="course-content-grid">
-                    <!-- Video Section -->
-                    <div id="videoSection" class="video-section" style="display: none;">
-                        <div class="video-player-container">
-                            <div id="videoPlayer"></div>
-                        </div>
-                        <div class="module-info-panel">
-                            <h3 id="currentModuleTitle">Module Title</h3>
-                            <p id="moduleDescription">Module description...</p>
-                            <div class="module-meta">
-                                <span>Duration: <strong id="moduleDuration">--:--</strong></span>
-                                <span>Tier: <strong id="moduleTier">basic</strong></span>
-                                <span>Status: <strong id="moduleStatus">Not Started</strong></span>
-                            </div>
-                            <div class="video-controls">
-                                <button id="prevModule" class="btn-secondary">← Previous</button>
-                                <button id="completeModule" class="cta-button">✓ Mark as Complete</button>
-                                <button id="nextModule" class="btn-secondary">Next →</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Modules List -->
-                    <div class="modules-section">
-                        <h3>Course Modules</h3>
-                        <div id="modulesList" class="modules-list">
-                            <!-- Modules will be rendered here -->
-                        </div>
-                    </div>
-
-                    <!-- Downloads Section -->
-                    <div class="downloads-section">
-                        <h3>Downloadable Resources</h3>
-                        <div id="downloadsList" class="downloads-list">
-                            <!-- Downloads will be rendered here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Progress Section -->
-            <div id="progress" class="progress-section" style="display: none;">
-                <h2>Your Progress</h2>
-                <div class="progress-overview">
-                    <div class="progress-circle-container">
-                        <svg class="progress-circle" viewBox="0 0 120 120">
-                            <circle class="progress-bg" cx="60" cy="60" r="54"/>
-                            <circle class="progress-ring" id="completionCircle" cx="60" cy="60" r="54"/>
-                        </svg>
-                        <div class="progress-percent">
-                            <span id="completionPercent">0%</span>
-                            <small>Complete</small>
-                        </div>
-                    </div>
-                    <div class="progress-stats">
-                        <div class="stat-card">
-                            <h4>Overall Progress</h4>
-                            <p id="displayProgress">0%</p>
-                        </div>
-                        <div class="stat-card">
-                            <h4>Tier</h4>
-                            <p id="displayTier">Basic</p>
-                        </div>
-                        <div class="stat-card">
-                            <h4>Email</h4>
-                            <p id="displayEmail">-</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="course-progress-container">
-                    <h3>Course-by-Course Progress</h3>
-                    <div id="courseProgressList" class="course-progress-list">
-                        <!-- Course progress items will be rendered here -->
-                    </div>
-                </div>
-
-                <div class="activity-section">
-                    <h3>Recent Activity</h3>
-                    <div id="userActivityList" class="activity-list">
-                        <!-- Activity items will be rendered here -->
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Mobile Menu -->
-        <div id="mobileMenuOverlay" class="mobile-overlay" onclick="closeMobileMenu()"></div>
-        <div id="mobileMenu" class="mobile-menu">
-            <div class="mobile-menu-header">
-                <h3>Menu</h3>
-                <button onclick="closeMobileMenu()" class="close-btn">✕</button>
-            </div>
-            <nav class="mobile-nav">
-                <a href="#" onclick="closeMobileMenu()">Dashboard</a>
-                <a href="my-courses.html" onclick="closeMobileMenu()">My Courses</a>
-                <a href="#progress" onclick="closeMobileMenu()">My Progress</a>
-                <a href="#" onclick="showUpgradeModal(); closeMobileMenu()">Upgrade</a>
-            </nav>
-            <div class="mobile-user-info">
-                <p id="mobileUserEmail">-</p>
-                <p id="mobileUserTier" class="user-tier">Basic</p>
-                <button id="mobileLogoutBtn" class="btn-secondary">Logout</button>
-            </div>
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <h2>No courses available right now</h2>
+            <p>Please check back soon.</p>
         </div>
-    </div>
 
-    <!-- Upgrade Modal -->
-    <div id="upgradeModal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeUpgradeModal()">&times;</span>
-            <h2>🌟 Upgrade to Premium</h2>
-            <p>Get access to premium courses and exclusive resources!</p>
-            <div class="pricing-options">
-                <div class="pricing-card">
-                    <h3>Premium Monthly</h3>
-                    <p class="price">₹29.99/month</p>
-                    <ul>
-                        <li>✓ Access to all premium courses</li>
-                        <li>✓ Downloadable resources</li>
-                        <li>✓ Priority support</li>
-                        <li>✓ Certificate of completion</li>
-                    </ul>
-                    <button onclick="processUpgrade('monthly')" class="cta-button">Subscribe Now</button>
-                </div>
-            </div>
-            <div class="manual-payment">
-                <p>Prefer manual payment?</p>
-                <button onclick="processUpgrade('manual')" class="btn-secondary">Contact Support</button>
-            </div>
-        </div>
-    </div>
+        <div id="coursesContainer" class="courses-grid"></div>
+    </main>
 
-    <!-- Purchase Modal -->
-    <div id="purchaseModal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closePurchaseModal()">&times;</span>
-            <h2>🛒 Purchase Course</h2>
-            <p>Select your payment method:</p>
-            <div class="payment-methods">
-                <button onclick="processPayment('card')" class="payment-btn">💳 Credit/Debit Card</button>
-                <button onclick="processPayment('upi')" class="payment-btn">📱 UPI</button>
-                <button onclick="processPayment('netbanking')" class="payment-btn">🏦 Net Banking</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Load LMS Script with Configuration -->
+    <!-- Load Scripts -->
     <script>
-        // Backend Configuration - Update these values for your deployment
+        // Backend Configuration
         window.LMS_CONFIG = {
-            // For Supabase
             SUPABASE_URL: 'https://bvavtdyxuzzabzgodbjw.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2YXZ0ZHl4dXp6YWJ6Z29kYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2OTksImV4cCI6MjA4OTc3MzY5OX0.gqfiaeDtWBtuyj_CQCaiySVA2-VmuM9CVvd5N-gRlV8',
-            
-            // For Prisma/Vercel API (alternative)
             API_BASE_URL: '/api',
-            USE_PRISMA_API: false  // Set to true if using Prisma API routes
+            USE_PRISMA_API: false
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-manager.js"></script>
     <script src="router.js"></script>
-    <script src="lms.js"></script>
-    <script src="lms-extensions.js"></script>
-    
     <script>
-        function toggleMobileMenu() {
-            document.getElementById('mobileMenu').classList.add('active');
-            document.getElementById('mobileMenuOverlay').classList.add('active');
-            document.body.classList.add('menu-open');
+        class CatalogPage {
+            constructor() {
+                this.courses = [];
+                this.init();
+            }
+
+            async init() {
+                await this.checkAuthState();
+                await this.loadCourses();
+                this.renderCourses();
+                this.setupEventListeners();
+            }
+
+            async checkAuthState() {
+                const authManager = window.AuthManager || window.authManager;
+                let session = null;
+
+                try {
+                    if (authManager && typeof authManager.init === 'function') {
+                        await authManager.init();
+                    }
+                    if (authManager && typeof authManager.refreshSession === 'function') {
+                        session = await authManager.refreshSession();
+                    } else if (window.supabase) {
+                        const { data } = await window.supabase.auth.getSession();
+                        session = data.session;
+                    }
+                } catch (error) {
+                    console.error('Error checking auth state:', error);
+                }
+
+                const loggedOutActions = document.getElementById('loggedOutActions');
+                const loggedInActions = document.getElementById('loggedInActions');
+
+                if (session && session.user) {
+                    loggedOutActions.style.display = 'none';
+                    loggedInActions.style.display = 'flex';
+                    document.getElementById('userEmail').textContent = session.user.email;
+                } else {
+                    loggedOutActions.style.display = 'block';
+                    loggedInActions.style.display = 'none';
+                }
+            }
+
+            async loadCourses() {
+                try {
+                    const { data, error } = await window.supabase
+                        .from('courses')
+                        .select('*')
+                        .eq('is_active', true)
+                        .order('created_at');
+
+                    if (error) throw error;
+                    this.courses = data || [];
+                } catch (error) {
+                    console.error('Error loading courses:', error);
+                    this.courses = [];
+                }
+            }
+
+            renderCourses() {
+                document.getElementById('loadingState').style.display = 'none';
+
+                const container = document.getElementById('coursesContainer');
+                const emptyState = document.getElementById('emptyState');
+
+                if (this.courses.length === 0) {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                container.style.display = 'grid';
+                emptyState.style.display = 'none';
+
+                container.innerHTML = this.courses.map(course => this.renderCourseCard(course)).join('');
+            }
+
+            renderCourseCard(course) {
+                const description = course.description || '';
+                const shortDesc = description.length > 110
+                    ? description.substring(0, 110) + '...'
+                    : description;
+
+                const priceLabel = (course.price === null || course.price === undefined || course.price === 0)
+                    ? 'Free'
+                    : `₹${Number(course.price).toFixed(2)}`;
+
+                const imageMarkup = course.thumbnail_url
+                    ? `<img src="${this.escapeAttr(course.thumbnail_url)}" alt="${this.escapeAttr(course.title)}" loading="lazy">`
+                    : `<span class="placeholder-icon">📘</span>`;
+
+                const knowMoreMarkup = course.know_more_url
+                    ? `<a class="cta-button secondary btn-know-more" href="${this.escapeAttr(course.know_more_url)}" target="_blank" rel="noopener noreferrer">Know More</a>`
+                    : `<button class="cta-button secondary btn-know-more" disabled title="Details coming soon">Know More</button>`;
+
+                return `
+                    <div class="course-card">
+                        <div class="course-image">${imageMarkup}</div>
+                        <div class="course-card-body">
+                            <h3>${this.escapeHtml(course.title)}</h3>
+                            <p class="course-desc">${this.escapeHtml(shortDesc)}</p>
+                            <div class="course-meta">
+                                <span class="course-tier">${(course.required_tier || 'basic').toUpperCase()} TIER</span>
+                                <span class="course-price">${priceLabel}</span>
+                            </div>
+                            <div class="course-actions">
+                                ${knowMoreMarkup}
+                                <button class="cta-button btn-buy-now" data-course-id="${this.escapeAttr(course.id)}">Buy Now</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            setupEventListeners() {
+                document.getElementById('coursesContainer').addEventListener('click', (e) => {
+                    const buyBtn = e.target.closest('.btn-buy-now');
+                    if (buyBtn) {
+                        this.goToCheckout(buyBtn.dataset.courseId);
+                    }
+                });
+
+                const logoutBtn = document.getElementById('logoutBtn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', () => this.logout());
+                }
+            }
+
+            goToCheckout(courseId) {
+                // Checkout is a protected route -- if the visitor isn't logged in,
+                // the router will bounce them to /login.html?redirect=... and bring
+                // them right back here to complete the purchase after signing in.
+                const path = `/checkout?course=${encodeURIComponent(courseId)}`;
+                if (window.lmsRouter && typeof window.lmsRouter.navigate === 'function') {
+                    window.lmsRouter.navigate(path);
+                } else {
+                    window.location.href = path;
+                }
+            }
+
+            async logout() {
+                const authManager = window.AuthManager || window.authManager;
+                if (authManager && typeof authManager.signOut === 'function') {
+                    await authManager.signOut();
+                } else if (window.supabase) {
+                    await window.supabase.auth.signOut();
+                }
+                window.location.href = '/';
+            }
+
+            escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str ?? '';
+                return div.innerHTML;
+            }
+
+            escapeAttr(str) {
+                return this.escapeHtml(str).replace(/"/g, '&quot;');
+            }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            window.catalogPage = new CatalogPage();
+        });
     </script>
 </body>
 </html>

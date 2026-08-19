@@ -92,7 +92,10 @@ class LMSRouter {
         const fullPath = pathname + url.search;
         
         // Check authentication for protected routes
-        const protectedRoutes = ['/', '/my-courses', '/course/', '/video/', '/admin'];
+        // NOTE: '/' is intentionally NOT protected anymore -- it's now the
+        // public course catalog homepage. Anyone can browse it; login is
+        // only required to actually buy or watch a course.
+        const protectedRoutes = ['/my-courses', '/course/', '/video/', '/admin'];
         const checkoutRoutes = ['/checkout', '/checkout-status'];
         const isCheckout = checkoutRoutes.some(route => pathname === route || pathname.startsWith(route + '?') || pathname.startsWith(route + '/'));
         const isProtected = protectedRoutes.some(route => 
@@ -101,7 +104,12 @@ class LMSRouter {
 
         if (isProtected && !await this.isAuthenticated()) {
             if (pathname !== '/login') {
-                this.navigateToLogin();
+                // Pass along the path the user was actually trying to reach
+                // (e.g. "/checkout?course=45") so login.html can send them
+                // straight back to it -- reading window.location here instead
+                // would still show whatever page they were on before this
+                // navigation started, since pushState hasn't happened yet.
+                this.navigateToLogin(fullPath);
                 return;
             }
         }
@@ -181,9 +189,12 @@ class LMSRouter {
         }
     }
 
-    navigateToLogin() {
-        const currentPath = window.location.pathname + window.location.search;
-        window.location.href = `/login.html?redirect=${encodeURIComponent(currentPath)}`;
+    navigateToLogin(targetPath) {
+        // Prefer the path that was actually being navigated to; fall back to
+        // the current URL for callers (e.g. initial page load) that don't
+        // have a separate target in flight.
+        const redirectPath = targetPath || (window.location.pathname + window.location.search);
+        window.location.href = `/login.html?redirect=${encodeURIComponent(redirectPath)}`;
     }
 
     async loadPage(path) {

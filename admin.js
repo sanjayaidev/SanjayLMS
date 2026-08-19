@@ -273,9 +273,13 @@ class AdminPanel {
 
         const courseId = document.getElementById('courseId').value;
         const priceUsdRaw = document.getElementById('coursePriceUsd').value;
+        const thumbnailUrlRaw = document.getElementById('courseThumbnailUrl').value.trim();
+        const knowMoreUrlRaw = document.getElementById('courseKnowMoreUrl').value.trim();
         const courseData = {
             title: document.getElementById('courseTitle').value,
             description: document.getElementById('courseDescription').value,
+            thumbnail_url: thumbnailUrlRaw === '' ? null : thumbnailUrlRaw,
+            know_more_url: knowMoreUrlRaw === '' ? null : knowMoreUrlRaw,
             required_tier: document.getElementById('courseTier').value,
             price: parseFloat(document.getElementById('coursePrice').value),
             price_usd: priceUsdRaw === '' ? null : parseFloat(priceUsdRaw),
@@ -971,6 +975,8 @@ class AdminPanel {
                 document.getElementById('courseId').value = course.id;
                 document.getElementById('courseTitle').value = course.title;
                 document.getElementById('courseDescription').value = course.description;
+                document.getElementById('courseThumbnailUrl').value = course.thumbnail_url ?? '';
+                document.getElementById('courseKnowMoreUrl').value = course.know_more_url ?? '';
                 document.getElementById('courseTier').value = course.required_tier;
                 document.getElementById('coursePrice').value = course.price;
                 document.getElementById('coursePriceUsd').value = course.price_usd ?? '';
