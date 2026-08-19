@@ -64,17 +64,16 @@
                 </div>
 
                 <div class="provider-options">
-                    <!-- Razorpay kept in the DOM (and fully functional server-side) but
-                         hidden from the UI — Cashfree is now the primary INR option. -->
-                    <label class="provider-option" data-provider="razorpay" style="display:none;">
-                        <input type="radio" name="provider" value="razorpay">
+                    <!-- Razorpay as the default INR payment option -->
+                    <label class="provider-option selected" data-provider="razorpay">
+                        <input type="radio" name="provider" value="razorpay" checked>
                         <div>
                             <div class="label">Razorpay</div>
                             <div class="sub">UPI, Cards, NetBanking, Wallets</div>
                         </div>
                     </label>
-                    <label class="provider-option selected" data-provider="cashfree">
-                        <input type="radio" name="provider" value="cashfree" checked>
+                    <label class="provider-option" data-provider="cashfree" style="display:none;">
+                        <input type="radio" name="provider" value="cashfree">
                         <div>
                             <div class="label">Cashfree</div>
                             <div class="sub">UPI, Cards, NetBanking, Wallets</div>
