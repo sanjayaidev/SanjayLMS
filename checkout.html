@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - LMS Platform</title>
     <link rel="stylesheet" href="lms.css">
-    <!-- Payment gateway temporarily disabled (KYC review) — Instagram DM checkout in use.
+    <!-- Payment gateway temporarily disabled (KYC review) — WhatsApp DM checkout in use.
          Restore these when switching back to the real payment flow.
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
@@ -51,28 +51,22 @@
         .checkout-error { color: #d33; font-size: 0.9rem; margin-top: 1rem; text-align: center; }
         .checkout-loading { text-align: center; padding: 3rem 0; color: #888; }
 
-        /* --- Temporary: Instagram DM checkout (payment gateway under KYC review) --- */
-        .insta-notice {
+        /* --- Temporary: WhatsApp DM checkout (payment gateway under KYC review) --- */
+        .wa-notice {
             display: flex; gap: 0.6rem; align-items: flex-start;
             background: #fff8e6; border: 1px solid #f5deb3; border-radius: 10px;
             padding: 0.9rem 1rem; margin-bottom: 1.5rem; font-size: 0.88rem; color: #7a5a00;
         }
-        .insta-notice .icon { font-size: 1.1rem; line-height: 1; }
-        .insta-card {
+        .wa-notice .icon { font-size: 1.1rem; line-height: 1; }
+        .wa-card {
             border: 2px solid #eee; border-radius: 12px; padding: 1.25rem;
             margin-bottom: 1.25rem; text-align: center;
         }
-        .insta-card .handle {
+        .wa-card .handle {
             display: inline-flex; align-items: center; gap: 0.5rem;
             font-weight: 700; font-size: 1.1rem; color: #333; margin-bottom: 0.25rem;
         }
-        .insta-card .sub { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
-        .insta-btn {
-            display: inline-block; width: 100%; box-sizing: border-box;
-            padding: 0.85rem; border-radius: 10px; text-decoration: none;
-            font-weight: 600; font-size: 0.95rem; color: white; text-align: center;
-            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
-        }
+        .wa-card .sub { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
         .form-group { margin-bottom: 1rem; text-align: left; }
         .form-group label {
             display: block; font-size: 0.85rem; font-weight: 600; color: #555; margin-bottom: 0.35rem;
@@ -88,10 +82,10 @@
             cursor: pointer; margin-bottom: 0.6rem;
         }
         .copy-btn.copied { background: #2ecc71; }
-        .insta-link-btn {
+        .wa-link-btn {
             display: block; text-align: center; padding: 0.85rem; border-radius: 10px;
             text-decoration: none; font-weight: 600; font-size: 0.95rem; color: white;
-            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+            background: #25D366;
         }
         .copy-hint { font-size: 0.78rem; color: #999; text-align: center; margin-top: 0.5rem; }
     </style>
@@ -110,13 +104,13 @@
                     <div class="price" id="coursePrice"></div>
                 </div>
 
-                <div class="insta-notice">
+                <div class="wa-notice">
                     <span class="icon">⚠️</span>
-                    <div>Our online payment gateway is temporarily unavailable while it's under KYC review. To get access right now, please message us on Instagram with the email ID you'd like access on — we'll grant access manually.</div>
+                    <div>Our online payment gateway is temporarily unavailable while it's under KYC review. To get access right now, please message us on WhatsApp with the email ID you'd like access on — we'll grant access manually.</div>
                 </div>
 
-                <div class="insta-card">
-                    <div class="handle">📸 Message us on Instagram</div>
+                <div class="wa-card">
+                    <div class="handle">💬 Message us on WhatsApp</div>
                     <div class="sub">+91 89846 36695</div>
 
                     <div class="form-group">
@@ -130,8 +124,8 @@
                     </div>
 
                     <button class="copy-btn" id="copyBtn" onclick="copyMessage()">Copy message</button>
-                    <a class="insta-link-btn" id="instaLinkBtn" href="https://instagram.com/direct/inbox/" target="_blank" rel="noopener">Open Instagram</a>
-                    <div class="copy-hint">Copy the message above, then paste it into your Instagram DM to us at +91 89846 36695.</div>
+                    <a class="wa-link-btn" id="waLinkBtn" href="#" target="_blank" rel="noopener">Open WhatsApp</a>
+                    <div class="copy-hint">Tapping "Open WhatsApp" pre-fills the message below — just hit send.</div>
                 </div>
 
                 <div class="checkout-error" id="checkoutError" style="display:none;"></div>
@@ -158,6 +152,8 @@
         const courseId = params.get('course');
         let course = null;
         let session = null;
+
+        const WHATSAPP_NUMBER = '918984636695'; // country code + number, no + or spaces
 
         function showError(msg) {
             const el = document.getElementById('checkoutError');
@@ -232,7 +228,7 @@
             document.getElementById('checkoutBody').style.display = 'block';
 
             // Prefill the email field with the logged-in user's email and
-            // build the initial DM message.
+            // build the initial WhatsApp message + deep link.
             const emailInput = document.getElementById('buyerEmail');
             emailInput.value = session.user.email || '';
             emailInput.addEventListener('input', updateDmMessage);
@@ -247,7 +243,10 @@
         }
 
         function updateDmMessage() {
-            document.getElementById('dmMessage').value = buildDmMessage();
+            const msg = buildDmMessage();
+            document.getElementById('dmMessage').value = msg;
+            document.getElementById('waLinkBtn').href =
+                `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
         }
 
         function copyMessage() {
