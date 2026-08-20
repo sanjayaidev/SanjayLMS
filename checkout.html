@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - LMS Platform</title>
     <link rel="stylesheet" href="lms.css">
-    <!-- Payment gateway temporarily disabled (KYC review) — WhatsApp DM checkout in use.
-         Restore these when switching back to the real payment flow.
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
-    -->
     <style>
         .checkout-page {
             max-width: 560px;
@@ -50,44 +47,6 @@
         .pay-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .checkout-error { color: #d33; font-size: 0.9rem; margin-top: 1rem; text-align: center; }
         .checkout-loading { text-align: center; padding: 3rem 0; color: #888; }
-
-        /* --- Temporary: WhatsApp DM checkout (payment gateway under KYC review) --- */
-        .wa-notice {
-            display: flex; gap: 0.6rem; align-items: flex-start;
-            background: #fff8e6; border: 1px solid #f5deb3; border-radius: 10px;
-            padding: 0.9rem 1rem; margin-bottom: 1.5rem; font-size: 0.88rem; color: #7a5a00;
-        }
-        .wa-notice .icon { font-size: 1.1rem; line-height: 1; }
-        .wa-card {
-            border: 2px solid #eee; border-radius: 12px; padding: 1.25rem;
-            margin-bottom: 1.25rem; text-align: center;
-        }
-        .wa-card .handle {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            font-weight: 700; font-size: 1.1rem; color: #333; margin-bottom: 0.25rem;
-        }
-        .wa-card .sub { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
-        .form-group { margin-bottom: 1rem; text-align: left; }
-        .form-group label {
-            display: block; font-size: 0.85rem; font-weight: 600; color: #555; margin-bottom: 0.35rem;
-        }
-        .form-group input, .form-group textarea {
-            width: 100%; box-sizing: border-box; padding: 0.7rem 0.8rem;
-            border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.95rem; font-family: inherit;
-        }
-        .form-group textarea { resize: vertical; min-height: 70px; }
-        .copy-btn {
-            width: 100%; padding: 0.85rem; border: none; border-radius: 10px;
-            background: #667eea; color: white; font-size: 0.95rem; font-weight: 600;
-            cursor: pointer; margin-bottom: 0.6rem;
-        }
-        .copy-btn.copied { background: #2ecc71; }
-        .wa-link-btn {
-            display: block; text-align: center; padding: 0.85rem; border-radius: 10px;
-            text-decoration: none; font-weight: 600; font-size: 0.95rem; color: white;
-            background: #25D366;
-        }
-        .copy-hint { font-size: 0.78rem; color: #999; text-align: center; margin-top: 0.5rem; }
     </style>
 </head>
 <body>
@@ -104,30 +63,32 @@
                     <div class="price" id="coursePrice"></div>
                 </div>
 
-                <div class="wa-notice">
-                    <span class="icon">⚠️</span>
-                    <div>Our online payment gateway is temporarily unavailable while it's under KYC review. To get access right now, please message us on WhatsApp with the email ID you'd like access on — we'll grant access manually.</div>
+                <div class="provider-options">
+                    <!-- Razorpay as the default INR payment option -->
+                    <label class="provider-option selected" data-provider="razorpay">
+                        <input type="radio" name="provider" value="razorpay" checked>
+                        <div>
+                            <div class="label">Razorpay</div>
+                            <div class="sub">UPI, Cards, NetBanking, Wallets</div>
+                        </div>
+                    </label>
+                    <label class="provider-option" data-provider="cashfree" style="display:none;">
+                        <input type="radio" name="provider" value="cashfree">
+                        <div>
+                            <div class="label">Cashfree</div>
+                            <div class="sub">UPI, Cards, NetBanking, Wallets</div>
+                        </div>
+                    </label>
+                    <label class="provider-option" data-provider="paypal">
+                        <input type="radio" name="provider" value="paypal">
+                        <div>
+                            <div class="label">PayPal</div>
+                            <div class="sub">PayPal balance, Credit/Debit card</div>
+                        </div>
+                    </label>
                 </div>
 
-                <div class="wa-card">
-                    <div class="handle">💬 Message us on WhatsApp</div>
-                    <div class="sub">+91 89846 36695</div>
-
-                    <div class="form-group">
-                        <label for="buyerEmail">Your email (the one you want access on)</label>
-                        <input type="email" id="buyerEmail" placeholder="you@example.com">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="dmMessage">Message to send</label>
-                        <textarea id="dmMessage" readonly></textarea>
-                    </div>
-
-                    <button class="copy-btn" id="copyBtn" onclick="copyMessage()">Copy message</button>
-                    <a class="wa-link-btn" id="waLinkBtn" href="#" target="_blank" rel="noopener">Open WhatsApp</a>
-                    <div class="copy-hint">Tapping "Open WhatsApp" pre-fills the message below — just hit send.</div>
-                </div>
-
+                <button class="pay-btn" id="payBtn" onclick="startPayment()">Pay Now</button>
                 <div class="checkout-error" id="checkoutError" style="display:none;"></div>
             </div>
         </div>
@@ -153,7 +114,18 @@
         let course = null;
         let session = null;
 
-        const WHATSAPP_NUMBER = '918984636695'; // country code + number, no + or spaces
+        document.querySelectorAll('.provider-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.provider-option').forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+                el.querySelector('input').checked = true;
+                if (course) updatePriceDisplay();
+            });
+        });
+
+        function selectedProvider() {
+            return document.querySelector('input[name="provider"]:checked').value;
+        }
 
         function showError(msg) {
             const el = document.getElementById('checkoutError');
@@ -223,55 +195,27 @@
             }
 
             document.getElementById('courseTitle').textContent = course.title;
-            document.getElementById('coursePrice').textContent = '₹' + price.toFixed(2);
+            updatePriceDisplay();
             document.getElementById('checkoutLoading').style.display = 'none';
             document.getElementById('checkoutBody').style.display = 'block';
 
-            // Prefill the email field with the logged-in user's email and
-            // build the initial WhatsApp message + deep link.
-            const emailInput = document.getElementById('buyerEmail');
-            emailInput.value = session.user.email || '';
-            emailInput.addEventListener('input', updateDmMessage);
-            updateDmMessage();
+            // Hide PayPal option entirely if this course has no USD price set
+            const usdPrice = parseFloat(course.price_usd);
+            if (!Number.isFinite(usdPrice) || usdPrice <= 0) {
+                document.querySelector('.provider-option[data-provider="paypal"]').style.display = 'none';
+            }
         }
 
-        function buildDmMessage() {
-            const email = document.getElementById('buyerEmail').value.trim() || '<your email here>';
-            const courseTitle = course ? course.title : '<course name>';
-            const priceText = course ? '₹' + parseFloat(course.price).toFixed(2) : '';
-            return `Hi! I'd like to buy "${courseTitle}" (${priceText}). Please grant access to my account email: ${email}`;
+        function updatePriceDisplay() {
+            const provider = selectedProvider();
+            const priceEl = document.getElementById('coursePrice');
+            if (provider === 'paypal') {
+                priceEl.textContent = '$' + parseFloat(course.price_usd).toFixed(2);
+            } else {
+                priceEl.textContent = '₹' + parseFloat(course.price).toFixed(2);
+            }
         }
 
-        function updateDmMessage() {
-            const msg = buildDmMessage();
-            document.getElementById('dmMessage').value = msg;
-            document.getElementById('waLinkBtn').href =
-                `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
-        }
-
-        function copyMessage() {
-            const textarea = document.getElementById('dmMessage');
-            textarea.select();
-            textarea.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(textarea.value).then(() => {
-                const btn = document.getElementById('copyBtn');
-                const original = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = original;
-                    btn.classList.remove('copied');
-                }, 1800);
-            }).catch(() => {
-                // Clipboard API unavailable/blocked — text is already selected
-                // above so the user can still Ctrl/Cmd+C manually.
-            });
-        }
-
-        /* --- TEMPORARILY DISABLED: original payment flow ---
-         * Payment gateway is under KYC review. Restore this function (and the
-         * provider-options / Pay Now UI it depended on) once it's back live.
-         *
         async function startPayment() {
             const btn = document.getElementById('payBtn');
             btn.disabled = true;
@@ -368,7 +312,6 @@
                 btn.textContent = 'Pay Now';
             }
         }
-        */
 
         init();
     </script>
