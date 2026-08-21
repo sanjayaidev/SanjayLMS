@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Refund Policy – Sanjay Meher Courses</title>
+    <meta name="description" content="Refund Policy for Sanjay Meher's online courses." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            --bg: #0b0b14;
+            --bg-card: #14141f;
+            --bg-card-hover: #1a1a29;
+            --text: #f2f1f7;
+            --text-dim: #a8a3bd;
+            --border: rgba(255,255,255,0.09);
+            --accent: #8b5cf6;
+            --accent-light: #c4b5fd;
+            --accent-dim: rgba(139,92,246,0.14);
+            --radius: 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+            padding: 2rem 1.25rem;
+        }
+        h1, h2, h3 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+        a {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        .brand {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+        .brand .sub {
+            display: block;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+        .back-link:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-light);
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+        .page-title {
+            margin-bottom: 2.5rem;
+        }
+        .page-title h1 {
+            font-size: clamp(2rem, 4.5vw, 2.8rem);
+            margin-bottom: 0.5rem;
+        }
+        .page-title p {
+            color: var(--text-dim);
+            font-size: 1.05rem;
+        }
+        .policy-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 2.2rem;
+            margin-bottom: 2.5rem;
+            transition: border-color 0.2s;
+        }
+        .policy-card:hover {
+            border-color: var(--accent-dim);
+        }
+        .policy-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .policy-card h2 i {
+            color: var(--accent-light);
+            font-size: 1.3rem;
+        }
+        .policy-card .last-updated {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 1.2rem;
+        }
+        .policy-card h3 {
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin: 1.4rem 0 0.4rem 0;
+            color: var(--accent-light);
+        }
+        .policy-card h3:first-of-type {
+            margin-top: 0;
+        }
+        .policy-card p {
+            color: var(--text-dim);
+            margin-bottom: 0.8rem;
+            font-size: 0.95rem;
+        }
+        .policy-card ul {
+            list-style: none;
+            padding-left: 0.2rem;
+            margin: 0.6rem 0 1rem 0;
+        }
+        .policy-card ul li {
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.6rem;
+            font-size: 0.95rem;
+        }
+        .policy-card ul li i {
+            margin-top: 0.2rem;
+            width: 1.1rem;
+            flex-shrink: 0;
+        }
+        .policy-card ul li .icon-valid {
+            color: #25d366;
+        }
+        .policy-card ul li .icon-invalid {
+            color: #ef4444;
+        }
+        .policy-card ul li strong {
+            color: var(--text);
+        }
+        .policy-card .note-box {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .policy-card .note-box i {
+            color: var(--accent-light);
+            margin-right: 0.5rem;
+        }
+        .policy-card .highlight-box {
+            background: rgba(37, 211, 102, 0.08);
+            border: 1px solid rgba(37, 211, 102, 0.25);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .policy-card .highlight-box i {
+            color: #25d366;
+            margin-right: 0.5rem;
+        }
+        .policy-card .danger-box {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .policy-card .danger-box i {
+            color: #ef4444;
+            margin-right: 0.5rem;
+        }
+        .contact-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-top: 1.2rem;
+            border: 1px solid var(--border);
+        }
+        .contact-block div {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+        .contact-block div i {
+            color: var(--accent-light);
+            font-size: 1.1rem;
+            width: 1.4rem;
+        }
+        .contact-block div a {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .contact-block div a:hover {
+            color: var(--accent-light);
+        }
+        footer {
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        footer a {
+            color: var(--accent-light);
+        }
+        @media (max-width: 640px) {
+            body { padding: 1.25rem; }
+            .policy-card { padding: 1.5rem; }
+            .contact-block { grid-template-columns: 1fr; }
+            .top-bar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div class="brand">
+                AI Courses
+                <span class="sub">by Sanjay Meher</span>
+            </div>
+            <a href="https://aicourse.sanjaymeher.online" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i> Back to Course
+            </a>
+        </div>
+
+        <!-- PAGE TITLE -->
+        <div class="page-title">
+            <h1>Refund Policy</h1>
+            <p>Our commitment to fairness and transparency.</p>
+        </div>
+
+        <!-- REFUND POLICY -->
+        <div class="policy-card">
+            <h2><i class="fa-solid fa-rotate-left"></i> Refund Policy</h2>
+            <div class="last-updated">Last Updated: August 21, 2026</div>
+            <p>We want you to be confident in your purchase. Our refund policy is designed to be fair to both you and us.</p>
+
+            <h3>24-Hour Refund Window</h3>
+            <p>You may request a refund within <strong>24 hours</strong> of your purchase. This period begins when your payment is confirmed and you receive access to the course.</p>
+
+            <h3>Valid Reasons for a Refund</h3>
+            <p>A refund will only be issued if you have a <strong>valid reason</strong>, defined as:</p>
+            <div class="highlight-box">
+                <i class="fa-solid fa-check-circle"></i>
+                <strong>Content Not as Advertised:</strong> The course does not substantially cover the specific skills or techniques (e.g., 3D Holographic and Product Visualization) as promised on the sales page, ad videos, or free preview material.
+            </div>
+
+            <h3>Reasons That Are NOT Valid</h3>
+            <p>We are transparent about what we do not consider a valid reason for a refund. The following will <strong>not</strong> be accepted:</p>
+            <div class="danger-box">
+                <ul>
+                    <li><i class="fa-solid fa-xmark icon-invalid"></i> "I changed my mind" or "I don't want it anymore."</li>
+                    <li><i class="fa-solid fa-xmark icon-invalid"></i> "My parents / partner / friend asked me to get a refund."</li>
+                    <li><i class="fa-solid fa-xmark icon-invalid"></i> "It was a mistake purchase."</li>
+                    <li><i class="fa-solid fa-xmark icon-invalid"></i> "I didn't have time to watch the course."</li>
+                </ul>
+            </div>
+
+            <h3>Free Preview &amp; Buyer Responsibility</h3>
+            <div class="note-box">
+                <i class="fa-solid fa-circle-info"></i>
+                We provide free previews / demo content so you can evaluate the course before buying. By purchasing, you confirm that you have reviewed the preview and believe the course meets your needs. Refund requests based on "I didn't know what it included" will be declined.
+            </div>
+
+            <h3>Legal Eligibility &amp; Buyer Confirmation</h3>
+            <p>When you complete a purchase, you confirm that:</p>
+            <ul>
+                <li><i class="fa-solid fa-gavel icon-valid"></i> You are the owner of the payment account used for the transaction.</li>
+                <li><i class="fa-solid fa-gavel icon-valid"></i> You are legally eligible to enter into this transaction and are not a minor.</li>
+            </ul>
+            <div class="danger-box">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Claims such as "I am a minor" or "I didn't authorise this payment from my account" will not be considered valid grounds for a refund, as the transaction is legally attributed to the account holder.
+            </div>
+
+            <h3>How to Request a Refund</h3>
+            <p>To request a refund, contact us at <a href="mailto:sanjaymeher8984@gmail.com">sanjaymeher8984@gmail.com</a> within 24 hours of purchase with your order details and a clear explanation of how the content differs from what was advertised.</p>
+
+            <h3>Processing Time</h3>
+            <p>Refunds are processed within 5-7 business days. The credit will appear on your original payment method.</p>
+        </div>
+
+        <!-- CONTACT -->
+        <div style="margin-top: 0.5rem;">
+            <div class="policy-card" style="margin-bottom: 0;">
+                <h2 style="font-size: 1.3rem; margin-bottom: 0.6rem;"><i class="fa-solid fa-address-card"></i> Contact Information</h2>
+                <div class="contact-block">
+                    <div><i class="fa-regular fa-user"></i> <span>Sanjay Meher</span></div>
+                    <div><i class="fa-regular fa-envelope"></i> <a href="mailto:sanjaymeher8984@gmail.com">sanjaymeher8984@gmail.com</a></div>
+                    <div><i class="fa-brands fa-instagram"></i> <a href="https://www.instagram.com/freelance.sanjay/" target="_blank">@freelance.sanjay</a></div>
+                    <div><i class="fa-brands fa-whatsapp"></i> <a href="https://wa.me/918984636695" target="_blank">+91 89846 36695</a></div>
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.9rem;">For any refund-related queries, please reach out via email.</p>
+            </div>
+        </div>
+
+        <footer>
+            &copy; 2026 Sanjay Meher · All rights reserved. · <a href="privacy-policy.html">Privacy</a> · <a href="refund-policy.html">Refund</a> · <a href="terms-of-service.html">Terms</a>
+        </footer>
+    </div>
+</body>
+</html>

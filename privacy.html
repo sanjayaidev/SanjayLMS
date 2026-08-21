@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Privacy Policy – Sanjay Meher Courses</title>
+    <meta name="description" content="Privacy Policy for Sanjay Meher's online courses." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            --bg: #0b0b14;
+            --bg-card: #14141f;
+            --bg-card-hover: #1a1a29;
+            --text: #f2f1f7;
+            --text-dim: #a8a3bd;
+            --border: rgba(255,255,255,0.09);
+            --accent: #8b5cf6;
+            --accent-light: #c4b5fd;
+            --accent-dim: rgba(139,92,246,0.14);
+            --radius: 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+            padding: 2rem 1.25rem;
+        }
+        h1, h2, h3 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+        a {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        .brand {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+        .brand .sub {
+            display: block;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+        .back-link:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-light);
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+        .page-title {
+            margin-bottom: 2.5rem;
+        }
+        .page-title h1 {
+            font-size: clamp(2rem, 4.5vw, 2.8rem);
+            margin-bottom: 0.5rem;
+        }
+        .page-title p {
+            color: var(--text-dim);
+            font-size: 1.05rem;
+        }
+        .policy-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 2.2rem;
+            margin-bottom: 2.5rem;
+            transition: border-color 0.2s;
+        }
+        .policy-card:hover {
+            border-color: var(--accent-dim);
+        }
+        .policy-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .policy-card h2 i {
+            color: var(--accent-light);
+            font-size: 1.3rem;
+        }
+        .policy-card .last-updated {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 1.2rem;
+        }
+        .policy-card h3 {
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin: 1.4rem 0 0.4rem 0;
+            color: var(--accent-light);
+        }
+        .policy-card h3:first-of-type {
+            margin-top: 0;
+        }
+        .policy-card p {
+            color: var(--text-dim);
+            margin-bottom: 0.8rem;
+            font-size: 0.95rem;
+        }
+        .policy-card ul {
+            list-style: none;
+            padding-left: 0.2rem;
+            margin: 0.6rem 0 1rem 0;
+        }
+        .policy-card ul li {
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.6rem;
+            font-size: 0.95rem;
+        }
+        .policy-card ul li i {
+            color: var(--accent-light);
+            margin-top: 0.2rem;
+            width: 1.1rem;
+            flex-shrink: 0;
+        }
+        .policy-card ul li strong {
+            color: var(--text);
+        }
+        .policy-card .note-box {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .policy-card .note-box i {
+            color: var(--accent-light);
+            margin-right: 0.5rem;
+        }
+        .contact-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-top: 1.2rem;
+            border: 1px solid var(--border);
+        }
+        .contact-block div {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+        .contact-block div i {
+            color: var(--accent-light);
+            font-size: 1.1rem;
+            width: 1.4rem;
+        }
+        .contact-block div a {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .contact-block div a:hover {
+            color: var(--accent-light);
+        }
+        footer {
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        footer a {
+            color: var(--accent-light);
+        }
+        @media (max-width: 640px) {
+            body { padding: 1.25rem; }
+            .policy-card { padding: 1.5rem; }
+            .contact-block { grid-template-columns: 1fr; }
+            .top-bar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div class="brand">
+                AI Courses
+                <span class="sub">by Sanjay Meher</span>
+            </div>
+            <a href="https://aicourse.sanjaymeher.online" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i> Back to Course
+            </a>
+        </div>
+
+        <!-- PAGE TITLE -->
+        <div class="page-title">
+            <h1>Privacy Policy</h1>
+            <p>How we collect, use, and protect your data.</p>
+        </div>
+
+        <!-- PRIVACY POLICY -->
+        <div class="policy-card">
+            <h2><i class="fa-solid fa-shield-halved"></i> Privacy Policy</h2>
+            <div class="last-updated">Last Updated: August 21, 2026</div>
+            <p>Sanjay Meher ("we", "us", "our") respects your privacy. This policy explains what data we collect and how it is used.</p>
+
+            <h3>What We Collect</h3>
+            <p>We only collect the minimum information required to provide you with access to our courses:</p>
+            <ul>
+                <li><i class="fa-solid fa-envelope"></i> <strong>Email address</strong> – used to create your account and grant course access.</li>
+                <li><i class="fa-solid fa-credit-card"></i> <strong>Payment details</strong> – processed securely by our payment partners (Cashfree or PayPal). We do not store your full credit/debit card numbers or banking information on our servers.</li>
+            </ul>
+
+            <h3>How We Use Your Data</h3>
+            <p>Your email is used solely for: course access, account management, and occasional updates about your purchased courses. We do not sell, rent, or share your personal information with any third parties for marketing purposes.</p>
+
+            <h3>Data Security</h3>
+            <p>We implement reasonable security measures to protect your personal information. However, no method of transmission over the internet is 100% secure.</p>
+
+            <h3>Your Rights</h3>
+            <p>You can request to delete your account and associated data at any time by contacting us at <a href="mailto:sanjaymeher8984@gmail.com">sanjaymeher8984@gmail.com</a>.</p>
+
+            <h3>Cookies</h3>
+            <p>We may use essential cookies to maintain your session and login state. We do not use tracking or advertising cookies.</p>
+
+            <h3>Changes to This Policy</h3>
+            <p>We may update this policy from time to time. Any changes will be posted on this page with an updated date.</p>
+        </div>
+
+        <!-- CONTACT -->
+        <div style="margin-top: 0.5rem;">
+            <div class="policy-card" style="margin-bottom: 0;">
+                <h2 style="font-size: 1.3rem; margin-bottom: 0.6rem;"><i class="fa-solid fa-address-card"></i> Contact Information</h2>
+                <div class="contact-block">
+                    <div><i class="fa-regular fa-user"></i> <span>Sanjay Meher</span></div>
+                    <div><i class="fa-regular fa-envelope"></i> <a href="mailto:sanjaymeher8984@gmail.com">sanjaymeher8984@gmail.com</a></div>
+                    <div><i class="fa-brands fa-instagram"></i> <a href="https://www.instagram.com/freelance.sanjay/" target="_blank">@freelance.sanjay</a></div>
+                    <div><i class="fa-brands fa-whatsapp"></i> <a href="https://wa.me/918984636695" target="_blank">+91 89846 36695</a></div>
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.9rem;">For any privacy-related queries, please reach out via email.</p>
+            </div>
+        </div>
+
+        <footer>
+            &copy; 2026 Sanjay Meher · All rights reserved. · <a href="privacy-policy.html">Privacy</a> · <a href="refund-policy.html">Refund</a> · <a href="terms-of-service.html">Terms</a>
+        </footer>
+    </div>
+</body>
+</html>

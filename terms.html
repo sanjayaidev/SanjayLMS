@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Terms of Service – Sanjay Meher Courses</title>
+    <meta name="description" content="Terms of Service for Sanjay Meher's online courses." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            --bg: #0b0b14;
+            --bg-card: #14141f;
+            --bg-card-hover: #1a1a29;
+            --text: #f2f1f7;
+            --text-dim: #a8a3bd;
+            --border: rgba(255,255,255,0.09);
+            --accent: #8b5cf6;
+            --accent-light: #c4b5fd;
+            --accent-dim: rgba(139,92,246,0.14);
+            --radius: 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+            padding: 2rem 1.25rem;
+        }
+        h1, h2, h3 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+        a {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        .brand {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+        .brand .sub {
+            display: block;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+        .back-link:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-light);
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+        .page-title {
+            margin-bottom: 2.5rem;
+        }
+        .page-title h1 {
+            font-size: clamp(2rem, 4.5vw, 2.8rem);
+            margin-bottom: 0.5rem;
+        }
+        .page-title p {
+            color: var(--text-dim);
+            font-size: 1.05rem;
+        }
+        .policy-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 2.2rem;
+            margin-bottom: 2.5rem;
+            transition: border-color 0.2s;
+        }
+        .policy-card:hover {
+            border-color: var(--accent-dim);
+        }
+        .policy-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .policy-card h2 i {
+            color: var(--accent-light);
+            font-size: 1.3rem;
+        }
+        .policy-card .last-updated {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 1.2rem;
+        }
+        .policy-card h3 {
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin: 1.4rem 0 0.4rem 0;
+            color: var(--accent-light);
+        }
+        .policy-card h3:first-of-type {
+            margin-top: 0;
+        }
+        .policy-card p {
+            color: var(--text-dim);
+            margin-bottom: 0.8rem;
+            font-size: 0.95rem;
+        }
+        .policy-card ul {
+            list-style: none;
+            padding-left: 0.2rem;
+            margin: 0.6rem 0 1rem 0;
+        }
+        .policy-card ul li {
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.6rem;
+            font-size: 0.95rem;
+        }
+        .policy-card ul li i {
+            color: var(--accent-light);
+            margin-top: 0.2rem;
+            width: 1.1rem;
+            flex-shrink: 0;
+        }
+        .policy-card ul li strong {
+            color: var(--text);
+        }
+        .policy-card .note-box {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .policy-card .note-box i {
+            color: var(--accent-light);
+            margin-right: 0.5rem;
+        }
+        .policy-card .danger-box {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .policy-card .danger-box i {
+            color: #ef4444;
+            margin-right: 0.5rem;
+        }
+        .contact-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-top: 1.2rem;
+            border: 1px solid var(--border);
+        }
+        .contact-block div {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+        .contact-block div i {
+            color: var(--accent-light);
+            font-size: 1.1rem;
+            width: 1.4rem;
+        }
+        .contact-block div a {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .contact-block div a:hover {
+            color: var(--accent-light);
+        }
+        footer {
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        footer a {
+            color: var(--accent-light);
+        }
+        @media (max-width: 640px) {
+            body { padding: 1.25rem; }
+            .policy-card { padding: 1.5rem; }
+            .contact-block { grid-template-columns: 1fr; }
+            .top-bar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <div class="brand">
+                AI Courses
+                <span class="sub">by Sanjay Meher</span>
+            </div>
+            <a href="https://aicourse.sanjaymeher.online" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i> Back to Course
+            </a>
+        </div>
+
+        <!-- PAGE TITLE -->
+        <div class="page-title">
+            <h1>Terms of Service</h1>
+            <p>Rules and guidelines for using our courses.</p>
+        </div>
+
+        <!-- TERMS OF SERVICE -->
+        <div class="policy-card">
+            <h2><i class="fa-solid fa-file-lines"></i> Terms of Service</h2>
+            <div class="last-updated">Last Updated: August 21, 2026</div>
+            <p>By purchasing, accessing, or using any course from Sanjay Meher, you agree to the following Terms of Service.</p>
+
+            <h3>1. Acceptance of Terms</h3>
+            <p>Using this website and purchasing any course constitutes your acceptance of these Terms. If you do not agree, please do not use our services.</p>
+
+            <h3>2. Personal Use License</h3>
+            <p>All course content (videos, text, resources) is for your <strong>personal, non-commercial use only</strong>. You are granted a limited, non-exclusive, non-transferable license to view and access the content for your own learning.</p>
+
+            <h3>3. Prohibited Uses</h3>
+            <p>You are strictly prohibited from:</p>
+            <ul>
+                <li><i class="fa-solid fa-ban"></i> <strong>Reselling:</strong> Selling, redistributing, or sublicensing the course content to any third party.</li>
+                <li><i class="fa-solid fa-ban"></i> <strong>Account Sharing:</strong> Sharing your login credentials with others or allowing others to access the course using your account.</li>
+                <li><i class="fa-solid fa-ban"></i> <strong>Unauthorised Copying:</strong> Recording, downloading (where not explicitly provided), or reproducing the content for any purpose other than personal use.</li>
+            </ul>
+
+            <h3>4. Violation &amp; Termination</h3>
+            <div class="danger-box">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                If you violate any of these terms (e.g., reselling, account sharing, unauthorised copying), your access to the course will be terminated immediately without a refund. We also reserve the right to take legal action to protect our intellectual property.
+            </div>
+
+            <h3>5. User Accounts</h3>
+            <p>You are responsible for keeping your login credentials confidential. You are liable for all activity on your account. Notify us immediately if you suspect unauthorised access.</p>
+
+            <h3>6. Disclaimer &amp; Limitation of Liability</h3>
+            <p>Courses are provided "as is." We make no guarantees about specific results. To the fullest extent permitted by law, Sanjay Meher shall not be liable for any indirect, incidental, or consequential damages arising from your use of the course content.</p>
+
+            <h3>7. Governing Law</h3>
+            <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in <strong>Mumbai, Maharashtra</strong>.</p>
+
+            <h3>8. Changes to Terms</h3>
+            <p>We may update these Terms from time to time. Continued use of the site after changes constitutes acceptance of the new Terms.</p>
+
+            <h3>9. Contact for Legal Matters</h3>
+            <p>For any legal or copyright-related inquiries, please contact us at <a href="mailto:sanjaymeher8984@gmail.com">sanjaymeher8984@gmail.com</a>.</p>
+        </div>
+
+        <!-- CONTACT -->
+        <div style="margin-top: 0.5rem;">
+            <div class="policy-card" style="margin-bottom: 0;">
+                <h2 style="font-size: 1.3rem; margin-bottom: 0.6rem;"><i class="fa-solid fa-address-card"></i> Contact Information</h2>
+                <div class="contact-block">
+                    <div><i class="fa-regular fa-user"></i> <span>Sanjay Meher</span></div>
+                    <div><i class="fa-regular fa-envelope"></i> <a href="mailto:sanjaymeher8984@gmail.com">sanjaymeher8984@gmail.com</a></div>
+                    <div><i class="fa-brands fa-instagram"></i> <a href="https://www.instagram.com/freelance.sanjay/" target="_blank">@freelance.sanjay</a></div>
+                    <div><i class="fa-brands fa-whatsapp"></i> <a href="https://wa.me/918984636695" target="_blank">+91 89846 36695</a></div>
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.9rem;">For any legal or account-related queries, please reach out via email.</p>
+            </div>
+        </div>
+
+        <footer>
+            &copy; 2026 Sanjay Meher · All rights reserved. · <a href="privacy-policy.html">Privacy</a> · <a href="refund-policy.html">Refund</a> · <a href="terms-of-service.html">Terms</a>
+        </footer>
+    </div>
+</body>
+</html>
