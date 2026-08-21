@@ -308,6 +308,7 @@
                                 <span class="course-price">${priceLabel}</span>
                             </div>
                             <div class="course-actions">
+                                <button class="cta-button secondary btn-preview" data-course-id="${this.escapeAttr(course.id)}">🔓 Preview</button>
                                 ${knowMoreMarkup}
                                 <button class="cta-button btn-buy-now" data-course-id="${this.escapeAttr(course.id)}">Buy Now</button>
                             </div>
@@ -318,6 +319,12 @@
 
             setupEventListeners() {
                 document.getElementById('coursesContainer').addEventListener('click', (e) => {
+                    const previewBtn = e.target.closest('.btn-preview');
+                    if (previewBtn) {
+                        this.goToPreview(previewBtn.dataset.courseId);
+                        return;
+                    }
+
                     const buyBtn = e.target.closest('.btn-buy-now');
                     if (buyBtn) {
                         this.goToCheckout(buyBtn.dataset.courseId);
@@ -339,6 +346,18 @@
                     window.lmsRouter.navigate(path);
                 } else {
                     window.location.href = path;
+                }
+            }
+
+            goToPreview(courseId) {
+                // '/course/:id' is also a protected route -- logged-out visitors get
+                // bounced to login and brought right back here afterwards. Once on
+                // course-detail.html, any free-preview module is watchable even
+                // without purchasing the course.
+                if (window.lmsRouter && typeof window.lmsRouter.goToCourse === 'function') {
+                    window.lmsRouter.goToCourse(courseId);
+                } else {
+                    window.location.href = `/course/${encodeURIComponent(courseId)}`;
                 }
             }
 
