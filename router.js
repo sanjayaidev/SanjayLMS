@@ -9,7 +9,11 @@ class LMSRouter {
             '/login': 'login.html',
             '/admin': 'admin.html',
             '/checkout': 'checkout.html',
-            '/checkout-status': 'checkout-status.html'
+            '/checkout-status': 'checkout-status.html',
+            // Legal Pages
+            '/privacy': 'privacy.html',
+            '/refund': 'refund.html',
+            '/terms': 'terms.html'
         };
         
         this.currentParams = {};
@@ -28,34 +32,50 @@ class LMSRouter {
     // record what's currently loaded and to figure out navigation targets,
     // so the two can be compared consistently.
     resolveRoute(pathname) {
-        const courseMatch = pathname.match(/^\/course\/([^\/]+)$/);
+        // Clean up pathname - remove trailing slash if present
+        const cleanPath = pathname.replace(/\/$/, '');
+        
+        const courseMatch = cleanPath.match(/^\/course\/([^\/]+)$/);
         if (courseMatch) {
             return { page: 'course-detail', file: 'course-detail.html', courseId: courseMatch[1] };
         }
 
-        const videoMatch = pathname.match(/^\/video\/([^\/]+)\/([^\/]+)$/);
+        const videoMatch = cleanPath.match(/^\/video\/([^\/]+)\/([^\/]+)$/);
         if (videoMatch) {
             return { page: 'video-view', file: 'video-view.html', courseId: videoMatch[1], moduleId: videoMatch[2] };
         }
 
-        if (/^\/checkout-status(?:\.html)?$/.test(pathname)) {
+        if (/^\/checkout-status(?:\.html)?$/.test(cleanPath)) {
             return { page: 'checkout-status', file: 'checkout-status.html' };
         }
 
-        if (/^\/checkout(?:\.html)?$/.test(pathname)) {
+        if (/^\/checkout(?:\.html)?$/.test(cleanPath)) {
             return { page: 'checkout', file: 'checkout.html' };
         }
 
-        if (pathname === '/my-courses' || pathname === '/my-courses.html') {
+        if (cleanPath === '/my-courses' || cleanPath === '/my-courses.html') {
             return { page: 'my-courses', file: 'my-courses.html' };
         }
 
-        if (pathname === '/login' || pathname === '/login.html') {
+        if (cleanPath === '/login' || cleanPath === '/login.html') {
             return { page: 'login', file: 'login.html' };
         }
 
-        if (pathname === '/admin' || pathname === '/admin.html') {
+        if (cleanPath === '/admin' || cleanPath === '/admin.html') {
             return { page: 'admin', file: 'admin.html' };
+        }
+
+        // Legal Pages
+        if (cleanPath === '/privacy' || cleanPath === '/privacy.html') {
+            return { page: 'privacy', file: 'privacy.html' };
+        }
+
+        if (cleanPath === '/refund' || cleanPath === '/refund.html') {
+            return { page: 'refund', file: 'refund.html' };
+        }
+
+        if (cleanPath === '/terms' || cleanPath === '/terms.html') {
+            return { page: 'terms', file: 'terms.html' };
         }
 
         // '/', '/index.html', and anything unrecognized fall back to the dashboard
@@ -92,6 +112,10 @@ class LMSRouter {
         const fullPath = pathname + url.search;
         
         // Check authentication for protected routes
+        // Legal pages are PUBLIC - no auth required
+        const publicRoutes = ['/privacy', '/refund', '/terms', '/login'];
+        const isPublic = publicRoutes.some(route => pathname === route || pathname === route + '.html');
+        
         // NOTE: '/' is intentionally NOT protected anymore -- it's now the
         // public course catalog homepage. Anyone can browse it; login is
         // only required to actually buy or watch a course.
@@ -102,7 +126,8 @@ class LMSRouter {
             pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?')
         ) || isCheckout;
 
-        if (isProtected && !await this.isAuthenticated()) {
+        // Skip auth check for public routes
+        if (!isPublic && isProtected && !await this.isAuthenticated()) {
             if (pathname !== '/login') {
                 // Pass along the path the user was actually trying to reach
                 // (e.g. "/checkout?course=45") so login.html can send them
@@ -168,7 +193,6 @@ class LMSRouter {
             
             // If no session but we have a user (token might need refresh), wait a bit and retry
             if (!session && !error) {
-                const events = ['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'];
                 const start = Date.now();
                 
                 // Wait up to 3 seconds for a session to appear (in case refresh is in progress)
@@ -269,6 +293,19 @@ class LMSRouter {
 
     goBack() {
         history.back();
+    }
+
+    // Helper methods for legal pages
+    goToPrivacy() {
+        this.navigate('/privacy');
+    }
+
+    goToRefund() {
+        this.navigate('/refund');
+    }
+
+    goToTerms() {
+        this.navigate('/terms');
     }
 }
 
