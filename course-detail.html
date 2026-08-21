@@ -822,5 +822,31 @@
             window.courseDetailPage = new CourseDetailPage();
         });
     </script>
+    <!-- Footer with Legal Links -->
+<footer style="max-width: 1080px; margin: 3rem auto 0; padding: 2rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.08);">
+    <div style="display: flex; flex-direction: column; gap: 1.2rem; align-items: center;">
+        <nav style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 2rem; font-size: 0.85rem;">
+            <a href="/privacy" style="color: var(--text-dim, #a8a3bd); text-decoration: none; transition: color 0.2s;">
+                <i class="fas fa-shield-halved"></i> Privacy Policy
+            </a>
+            <a href="/refund" style="color: var(--text-dim, #a8a3bd); text-decoration: none; transition: color 0.2s;">
+                <i class="fas fa-rotate-left"></i> Refund Policy
+            </a>
+            <a href="/terms" style="color: var(--text-dim, #a8a3bd); text-decoration: none; transition: color 0.2s;">
+                <i class="fas fa-file-lines"></i> Terms of Service
+            </a>
+        </nav>
+        <p style="color: var(--text-dim, #a8a3bd); font-size: 0.75rem; opacity: 0.5; margin: 0;">
+            © 2026 Sanjay Meher
+        </p>
+    </div>
+</footer>
+
+<style>
+    footer a:hover {
+        color: var(--accent-light, #c4b5fd) !important;
+        text-decoration: underline !important;
+    }
+</style>
 </body>
 </html>
