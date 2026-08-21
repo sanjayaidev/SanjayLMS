@@ -1768,13 +1768,43 @@ body.menu-open {
     .mobile-menu-btn {
         display: block;
     }
-    
-    .user-info {
+
+    /* Only collapse .user-info into the hamburger menu on pages that
+       actually have a working .mobile-menu-btn to replace it with
+       (currently just admin.html, via body.admin-page). Pages without
+       one (e.g. the public course catalog) keep .user-info visible so
+       Login/My Courses/Logout don't disappear on mobile. */
+    .admin-page .user-info {
         display: none;
     }
-    
+
+    .user-info {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
     .header-content {
         padding: 0 1rem;
+        gap: 0.5rem;
+    }
+
+    .logo h1 {
+        font-size: 1.3rem;
+    }
+
+    .user-info .cta-button.small,
+    .user-info .btn-secondary {
+        padding: 0.4rem 0.85rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .user-info .user-email {
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     
     .courses-grid {
