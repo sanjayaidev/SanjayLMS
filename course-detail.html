@@ -525,7 +525,8 @@
                 this.course = null;
                 this.modules = [];
                 this.downloads = [];
-                this.userProgress = {};
+                this.moduleProgress = {};
+                this.lessonProgress = {};
                 this.courseId = null;
                 
                 this.init();
@@ -637,6 +638,20 @@
 
                 this.modules = modules || [];
 
+                // Load lessons for every module, keyed by module_id. A module
+                // with zero rows here is a legacy single-video module and
+                // renders/behaves exactly as before.
+                const { data: allLessons } = await window.supabase
+                    .from('module_lessons_public')
+                    .select('*')
+                    .in('module_id', this.modules.map(m => m.id))
+                    .order('lesson_order');
+
+                this.moduleLessons = {};
+                (allLessons || []).forEach(l => {
+                    (this.moduleLessons[l.module_id] ||= []).push(l);
+                });
+
                 // Load downloads
                 const { data: downloads } = await window.supabase
                     .from('course_downloads')
@@ -646,15 +661,18 @@
 
                 this.downloads = downloads || [];
 
-                // Load user progress
+                // Load user progress — module-level rows (lesson_id NULL) and
+                // lesson-level rows land in the same table; split into two maps.
                 const { data: progress } = await window.supabase
                     .from('user_progress')
                     .select('*')
                     .eq('user_id', this.currentUser.id);
 
-                this.userProgress = {};
+                this.moduleProgress = {};
+                this.lessonProgress = {};
                 progress?.forEach(p => {
-                    this.userProgress[p.module_id] = p;
+                    if (p.lesson_id) this.lessonProgress[p.lesson_id] = p;
+                    else this.moduleProgress[p.module_id] = p;
                 });
 
                 // Modules bought a-la-carte (without owning the whole course).
@@ -700,11 +718,22 @@
             }
 
             calculateProgress() {
-                if (this.modules.length === 0) return 0;
-                const completedCount = Object.keys(this.userProgress).filter(
-                    moduleId => this.modules.some(m => m.id === moduleId)
-                ).length;
-                return Math.round((completedCount / this.modules.length) * 100);
+                // Count lessons for modules that have them, modules themselves
+                // for legacy single-video modules — same "flatten" the video
+                // page uses, so the two progress numbers always agree.
+                let total = 0, completed = 0;
+                for (const m of this.modules) {
+                    const lessons = this.moduleLessons[m.id] || [];
+                    if (lessons.length > 0) {
+                        total += lessons.length;
+                        completed += lessons.filter(l => !!this.lessonProgress[l.id]).length;
+                    } else {
+                        total += 1;
+                        if (this.moduleProgress[m.id]) completed += 1;
+                    }
+                }
+                if (total === 0) return 0;
+                return Math.round((completed / total) * 100);
             }
 
             calculateTotalDuration() {
@@ -802,15 +831,20 @@
 
             renderModules() {
                 const container = document.getElementById('modulesList');
-                
+
                 container.innerHTML = this.modules.map((module, index) => {
                     const hasAccess = this.hasModuleAccess(module);
-                    const isCompleted = !!this.userProgress[module.id];
                     const isPreview = !!module.is_preview;
-                    
+                    const lessons = this.moduleLessons[module.id] || [];
+                    const hasLessons = lessons.length > 0;
+
+                    const isCompleted = hasLessons
+                        ? lessons.every(l => !!this.lessonProgress[l.id])
+                        : !!this.moduleProgress[module.id];
+
                     let statusClass = 'status-available';
                     let statusText = 'Available';
-                    
+
                     if (isPreview && !this.hasPurchased) {
                         statusClass = 'status-preview';
                         statusText = '▶ Free Preview';
@@ -820,22 +854,47 @@
                     } else if (isCompleted) {
                         statusClass = 'status-completed';
                         statusText = 'Completed';
+                    } else if (hasLessons) {
+                        const done = lessons.filter(l => !!this.lessonProgress[l.id]).length;
+                        statusText = `${done}/${lessons.length} lessons`;
                     }
+
+                    // Modules with lessons open the FIRST lesson on click and show a
+                    // "N lessons" line; modules without lessons keep the old direct
+                    // video-open behavior unchanged.
+                    const clickTarget = hasAccess
+                        ? (hasLessons
+                            ? `window.lmsRouter.goToVideo('${this.course.id}', '${module.id}', '${lessons[0].id}')`
+                            : `window.lmsRouter.goToVideo('${this.course.id}', '${module.id}')`)
+                        : '';
 
                     return `
                         <div class="module-item ${isCompleted ? 'completed' : ''} ${!hasAccess ? 'locked' : ''} ${isPreview ? 'preview' : ''}" 
-                             onclick="${hasAccess ? `window.lmsRouter.goToVideo('${this.course.id}', '${module.id}')` : ''}">
+                             onclick="${clickTarget}">
                             <div class="module-number">${isCompleted ? '✓' : (index + 1)}</div>
                             <div class="module-content">
                                 <div class="module-title">${module.title} ${isPreview && !this.hasPurchased ? '🔓' : (!hasAccess ? '🔒' : '')}</div>
                                 <div class="module-description">${module.description || 'No description'}</div>
                                 <div class="module-meta">
-                                    <span>⏱️ ${module.duration || 'N/A'} min</span>
+                                    ${hasLessons
+                                        ? `<span>📚 ${lessons.length} lesson${lessons.length > 1 ? 's' : ''}</span>`
+                                        : `<span>⏱️ ${module.duration || 'N/A'} min</span>`}
                                     <span>🎯 ${module.required_tier}</span>
                                 </div>
                             </div>
                             <span class="module-status ${statusClass}">${statusText}</span>
                         </div>
+                        ${hasAccess && hasLessons ? `
+                        <div class="module-lesson-list" style="margin: -0.25rem 0 0.75rem 3rem; display:flex; flex-direction:column; gap:0.25rem;">
+                            ${lessons.map((lesson, lIdx) => `
+                                <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:#555; cursor:pointer; padding:0.25rem 0;"
+                                     onclick="event.stopPropagation(); window.lmsRouter.goToVideo('${this.course.id}', '${module.id}', '${lesson.id}')">
+                                    <span>${this.lessonProgress[lesson.id] ? '✓' : (index + 1) + '.' + (lIdx + 1)}</span>
+                                    <span style="flex:1;">${lesson.title}</span>
+                                    <span style="color:#999;">⏱️ ${lesson.duration || '--:--'}</span>
+                                </div>
+                            `).join('')}
+                        </div>` : ''}
                     `;
                 }).join('');
             }

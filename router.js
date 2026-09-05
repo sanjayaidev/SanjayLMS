@@ -283,8 +283,8 @@ class LMSRouter {
         this.navigate(`/course/${courseId}`);
     }
 
-    goToVideo(courseId, moduleId) {
-        this.navigate(`/video/${courseId}/${moduleId}`);
+    goToVideo(courseId, moduleId, lessonId = null) {
+        this.navigate(`/video/${courseId}/${moduleId}${lessonId ? `?lesson=${lessonId}` : ''}`);
     }
 
     goToHome() {

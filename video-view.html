@@ -362,7 +362,7 @@
             <div class="sidebar-panel">
                 <div class="course-list-header">
                     <h3 id="sidebarCourseTitle">Course Name</h3>
-                    <p><span id="completedCount">0</span>/<span id="totalCount">0</span> modules completed</p>
+                    <p><span id="completedCount">0</span>/<span id="totalCount">0</span> lessons completed</p>
                 </div>
                 <div id="moduleListContainer" class="module-list-container">
                     <!-- Modules will be rendered here -->
@@ -401,7 +401,9 @@
                 this.course = null;
                 this.modules = [];
                 this.currentModule = null;
-                this.userProgress = {};
+                this.moduleProgress = {};
+                this.lessonProgress = {};
+                this.allModuleLessons = {};
                 this.courseId = null;
                 this.moduleId = null;
                 
@@ -426,9 +428,10 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const courseId = urlParams.get('courseId') || window.lmsRouter?.currentParams?.courseId;
                 const moduleId = urlParams.get('moduleId') || window.lmsRouter?.currentParams?.moduleId;
-                
+                const lessonId = urlParams.get('lesson') || null; // optional — modules without lessons omit this
+
                 if (courseId && moduleId && this.currentUser) {
-                    this.loadVideo(courseId, moduleId);
+                    this.loadVideo(courseId, moduleId, lessonId);
                 }
             }
 
@@ -473,7 +476,7 @@
                 }
             }
 
-            async loadVideo(courseId, moduleId) {
+            async loadVideo(courseId, moduleId, lessonId = null) {
                 this.courseId = courseId;
                 this.moduleId = moduleId;
 
@@ -575,16 +578,40 @@
                     return;
                 }
 
-                // Load user progress
+                // Load user progress — module-level rows (lesson_id NULL, for
+                // modules with no lessons) and lesson-level rows are both in
+                // user_progress; split them into two lookup maps.
                 const { data: progress } = await window.supabase
                     .from('user_progress')
                     .select('*')
                     .eq('user_id', this.currentUser.id);
 
-                this.userProgress = {};
+                this.moduleProgress = {};
+                this.lessonProgress = {};
                 progress?.forEach(p => {
-                    this.userProgress[p.module_id] = p;
+                    if (p.lesson_id) this.lessonProgress[p.lesson_id] = p;
+                    else this.moduleProgress[p.module_id] = p;
                 });
+
+                // Load lessons for every module in one query — needed so
+                // prev/next and the progress bar can see the whole course,
+                // not just the module currently open. Keyed by module_id.
+                // A module with zero rows here is a legacy single-video module.
+                const { data: allLessons } = await window.supabase
+                    .from('module_lessons_public')
+                    .select('*')
+                    .in('module_id', this.modules.map(m => m.id))
+                    .order('lesson_order');
+
+                this.allModuleLessons = {};
+                (allLessons || []).forEach(l => {
+                    (this.allModuleLessons[l.module_id] ||= []).push(l);
+                });
+
+                this.lessons = this.allModuleLessons[this.currentModule.id] || [];
+                this.currentLesson = this.lessons.length
+                    ? (this.lessons.find(l => l.id === lessonId) || this.lessons[0])
+                    : null;
 
                 this.renderVideoInfo();
                 await this.loadVideoSource();
@@ -613,19 +640,29 @@
 
             renderVideoInfo() {
                 document.getElementById('sidebarCourseTitle').textContent = this.course.title;
-                document.getElementById('videoTitle').textContent = this.currentModule.title;
-                document.getElementById('videoDescription').textContent = 
-                    this.currentModule.description || 'No description available.';
-                document.getElementById('videoDuration').textContent = 
-                    this.currentModule.duration || '--:--';
-                document.getElementById('videoTier').textContent = 
-                    this.currentModule.required_tier.toUpperCase();
-                
-                const moduleIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
-                document.getElementById('moduleNumber').textContent = moduleIndex + 1;
 
-                // Update complete button state
-                const isCompleted = !!this.userProgress[this.currentModule.id];
+                // Title shows the lesson when the module has lessons, with the
+                // module name as a breadcrumb; falls back to the module title
+                // for legacy single-video modules.
+                document.getElementById('videoTitle').textContent =
+                    this.currentLesson ? this.currentLesson.title : this.currentModule.title;
+                document.getElementById('videoDescription').textContent =
+                    (this.currentLesson ? this.currentLesson.description : this.currentModule.description)
+                    || 'No description available.';
+                document.getElementById('videoDuration').textContent =
+                    (this.currentLesson ? this.currentLesson.duration : this.currentModule.duration) || '--:--';
+                document.getElementById('videoTier').textContent =
+                    this.currentModule.required_tier.toUpperCase();
+
+                const moduleIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
+                document.getElementById('moduleNumber').textContent = this.currentLesson
+                    ? `${moduleIndex + 1}.${this.lessons.findIndex(l => l.id === this.currentLesson.id) + 1}`
+                    : moduleIndex + 1;
+
+                // Update complete button state — keyed by lesson when present, module otherwise
+                const isCompleted = this.currentLesson
+                    ? !!this.lessonProgress[this.currentLesson.id]
+                    : !!this.moduleProgress[this.currentModule.id];
                 const completeBtn = document.getElementById('completeBtn');
                 if (isCompleted) {
                     completeBtn.classList.add('completed');
@@ -637,26 +674,51 @@
                     completeBtn.disabled = false;
                 }
 
-                // Update navigation buttons
-                document.getElementById('prevBtn').disabled = moduleIndex === 0;
-                document.getElementById('nextBtn').disabled = moduleIndex === this.modules.length - 1;
+                // Update navigation buttons — flatten (module, lesson) pairs into
+                // one ordered list so prev/next crosses module boundaries too.
+                const flat = this.flattenPlayableUnits();
+                const flatIndex = flat.findIndex(u =>
+                    u.module.id === this.currentModule.id &&
+                    (u.lesson ? u.lesson.id === this.currentLesson?.id : !this.currentLesson)
+                );
+                document.getElementById('prevBtn').disabled = flatIndex <= 0;
+                document.getElementById('nextBtn').disabled = flatIndex === -1 || flatIndex >= flat.length - 1;
 
-                // Update progress counts
-                const completedCount = this.modules.filter(m => 
-                    this.userProgress[m.id]
+                // Update progress counts — count lessons where present, otherwise modules
+                const totalUnits = flat.length;
+                const completedUnits = flat.filter(u =>
+                    u.lesson ? !!this.lessonProgress[u.lesson.id] : !!this.moduleProgress[u.module.id]
                 ).length;
-                document.getElementById('completedCount').textContent = completedCount;
-                document.getElementById('totalCount').textContent = this.modules.length;
+                document.getElementById('completedCount').textContent = completedUnits;
+                document.getElementById('totalCount').textContent = totalUnits;
             }
 
-            // Fetches the actual playable video_url through the secure
-            // get_module_video_url() RPC (server-side access check: preview
-            // module, or purchased + tier match) and loads it into the player.
-            // The modules list itself never contains video_url anymore.
+            // One ordered list across the whole course: modules with lessons expand
+            // into one entry per lesson; modules with none contribute one entry for
+            // the module itself. This is what prev/next and the progress bar walk.
+            flattenPlayableUnits() {
+                const flat = [];
+                for (const m of this.modules) {
+                    const lessons = this.allModuleLessons[m.id] || [];
+                    if (lessons.length > 0) {
+                        lessons.forEach(l => flat.push({ module: m, lesson: l }));
+                    } else {
+                        flat.push({ module: m, lesson: null });
+                    }
+                }
+                return flat;
+            }
+
+            // Fetches the actual playable video_url through a secure RPC —
+            // get_lesson_video_url() when the module has lessons, or the
+            // legacy get_module_video_url() for a module with none. Either
+            // way, access is decided server-side; video_url is never present
+            // in the modules/lessons list itself.
             async loadVideoSource() {
                 try {
-                    const { data: videoUrl, error } = await window.supabase
-                        .rpc('get_module_video_url', { p_module_id: this.currentModule.id });
+                    const { data: videoUrl, error } = this.currentLesson
+                        ? await window.supabase.rpc('get_lesson_video_url', { p_lesson_id: this.currentLesson.id })
+                        : await window.supabase.rpc('get_module_video_url', { p_module_id: this.currentModule.id });
 
                     if (error) {
                         console.error('Error fetching video url:', error);
@@ -801,55 +863,94 @@
 
             renderModuleList() {
                 const container = document.getElementById('moduleListContainer');
-                
+
                 container.innerHTML = this.modules.map((module, index) => {
                     const hasAccess = this.hasModuleAccess(module);
-                    const isCompleted = !!this.userProgress[module.id];
-                    const isActive = module.id === this.currentModule.id;
+                    const isActiveModule = module.id === this.currentModule.id;
                     const isPreview = !!module.is_preview;
                     const lockIcon = !hasAccess ? ' 🔒' : (isPreview && !this.hasPurchased ? ' 🔓' : '');
+                    const lessons = this.allModuleLessons[module.id] || [];
+
+                    // Legacy single-video module — same row as before, just clicking it now.
+                    if (lessons.length === 0) {
+                        const isCompleted = !!this.moduleProgress[module.id];
+                        return `
+                            <div class="module-list-item ${isCompleted ? 'completed' : ''} ${isActiveModule ? 'active' : ''} ${!hasAccess ? 'locked' : ''}"
+                                 onclick="${hasAccess ? `videoPage.loadVideo('${this.courseId}', '${module.id}')` : ''}">
+                                <div class="module-check">${isCompleted ? '✓' : (index + 1)}</div>
+                                <div class="module-list-content">
+                                    <div class="module-list-title">${module.title}${lockIcon}</div>
+                                    <div class="module-list-duration">⏱️ ${module.duration || '--:--'}${isPreview && !this.hasPurchased ? ' · Free Preview' : ''}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Module with lessons — header row (not itself playable) + one
+                    // row per lesson underneath. Current module auto-expanded.
+                    const completedLessons = lessons.filter(l => !!this.lessonProgress[l.id]).length;
+                    const lessonRows = lessons.map((lesson, lIdx) => {
+                        const lessonCompleted = !!this.lessonProgress[lesson.id];
+                        const isActiveLesson = isActiveModule && lesson.id === this.currentLesson?.id;
+                        const lessonPreview = lesson.is_preview || isPreview;
+                        const lessonLock = !hasAccess ? ' 🔒' : (lessonPreview && !this.hasPurchased ? ' 🔓' : '');
+
+                        return `
+                            <div class="module-list-item lesson-row ${lessonCompleted ? 'completed' : ''} ${isActiveLesson ? 'active' : ''} ${!hasAccess ? 'locked' : ''}"
+                                 style="padding-left: 2rem;"
+                                 onclick="${hasAccess ? `videoPage.loadVideo('${this.courseId}', '${module.id}', '${lesson.id}')` : ''}">
+                                <div class="module-check">${lessonCompleted ? '✓' : (index + 1) + '.' + (lIdx + 1)}</div>
+                                <div class="module-list-content">
+                                    <div class="module-list-title">${lesson.title}${lessonLock}</div>
+                                    <div class="module-list-duration">⏱️ ${lesson.duration || '--:--'}${lessonPreview && !this.hasPurchased ? ' · Free Preview' : ''}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
 
                     return `
-                        <div class="module-list-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''} ${!hasAccess ? 'locked' : ''}"
-                             onclick="${hasAccess ? `videoPage.loadVideo('${this.courseId}', '${module.id}')` : ''}">
-                            <div class="module-check">${isCompleted ? '✓' : (index + 1)}</div>
-                            <div class="module-list-content">
-                                <div class="module-list-title">${module.title}${lockIcon}</div>
-                                <div class="module-list-duration">⏱️ ${module.duration || '--:--'}${isPreview && !this.hasPurchased ? ' · Free Preview' : ''}</div>
-                            </div>
+                        <div class="module-list-header ${isActiveModule ? 'active' : ''}" style="font-weight:600; padding:0.5rem 0.75rem; color:#555; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.03em;">
+                            ${index + 1}. ${module.title}${lockIcon}
+                            <span style="float:right; font-weight:400; text-transform:none;">${completedLessons}/${lessons.length}</span>
                         </div>
+                        ${lessonRows}
                     `;
                 }).join('');
             }
 
             navigateToPrevious() {
-                const currentIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
-                if (currentIndex > 0) {
-                    const prevModule = this.modules[currentIndex - 1];
-                    if (this.hasModuleAccess(prevModule)) {
-                        window.lmsRouter.goToVideo(this.courseId, prevModule.id);
-                    }
-                }
+                const flat = this.flattenPlayableUnits();
+                const idx = flat.findIndex(u =>
+                    u.module.id === this.currentModule.id &&
+                    (u.lesson ? u.lesson.id === this.currentLesson?.id : !this.currentLesson)
+                );
+                if (idx > 0) this.goToUnit(flat[idx - 1]);
             }
 
             navigateToNext() {
-                const currentIndex = this.modules.findIndex(m => m.id === this.currentModule.id);
-                if (currentIndex < this.modules.length - 1) {
-                    const nextModule = this.modules[currentIndex + 1];
-                    if (this.hasModuleAccess(nextModule)) {
-                        window.lmsRouter.goToVideo(this.courseId, nextModule.id);
-                    }
-                }
+                const flat = this.flattenPlayableUnits();
+                const idx = flat.findIndex(u =>
+                    u.module.id === this.currentModule.id &&
+                    (u.lesson ? u.lesson.id === this.currentLesson?.id : !this.currentLesson)
+                );
+                if (idx !== -1 && idx < flat.length - 1) this.goToUnit(flat[idx + 1]);
+            }
+
+            goToUnit(unit) {
+                if (!this.hasModuleAccess(unit.module)) return; // locked module — do nothing
+                window.lmsRouter.goToVideo(this.courseId, unit.module.id, unit.lesson?.id || null);
             }
 
             async markComplete() {
                 try {
-                    // Insert or update progress
+                    // Per-lesson when the module has lessons; per-module otherwise
+                    // (legacy single-video modules keep working exactly as before).
                     await window.supabase
                         .from('user_progress')
                         .upsert({
                             user_id: this.currentUser.id,
                             module_id: this.currentModule.id,
+                            lesson_id: this.currentLesson?.id || null,
                             course_id: this.courseId,
                             completed: true,
                             completed_at: new Date().toISOString(),
@@ -857,10 +958,9 @@
                         });
 
                     // Update local state
-                    this.userProgress[this.currentModule.id] = {
-                        completed: true,
-                        completed_at: new Date().toISOString()
-                    };
+                    const progressRow = { completed: true, completed_at: new Date().toISOString() };
+                    if (this.currentLesson) this.lessonProgress[this.currentLesson.id] = progressRow;
+                    else this.moduleProgress[this.currentModule.id] = progressRow;
 
                     // Record activity
                     await window.supabase
@@ -870,7 +970,10 @@
                             course_id: this.courseId,
                             module_id: this.currentModule.id,
                             activity_type: 'module_complete',
-                            metadata: { completed_at: new Date().toISOString() }
+                            metadata: {
+                                completed_at: new Date().toISOString(),
+                                lesson_id: this.currentLesson?.id || undefined,
+                            }
                         });
 
                     // Re-render (info only — don't reload the video source and restart playback)
@@ -878,7 +981,7 @@
                     this.renderModuleList();
 
                     // Show success message
-                    alert('✅ Module marked as complete!');
+                    alert(this.currentLesson ? '✅ Lesson marked as complete!' : '✅ Module marked as complete!');
 
                 } catch (error) {
                     console.error('Error marking complete:', error);

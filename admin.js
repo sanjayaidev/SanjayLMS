@@ -5,6 +5,7 @@ class AdminPanel {
         this.courses = [];
         this.students = [];
         this.modules = [];
+        this.lessons = [];
         this.downloads = [];
         this.filteredCourses = [];
         this.currentFilter = 'all';
@@ -83,6 +84,7 @@ class AdminPanel {
 
         // Download / resource form
         document.getElementById('downloadForm').addEventListener('submit', (e) => this.handleDownloadSubmit(e));
+        document.getElementById('lessonForm').addEventListener('submit', (e) => this.handleLessonSubmit(e));
 
         // Grant course access form
         document.getElementById('grantAccessForm').addEventListener('submit', (e) => this.handleGrantAccessSubmit(e));
@@ -225,6 +227,36 @@ class AdminPanel {
         } catch (error) {
             console.error('Error loading downloads:', error);
             this.downloads = [];
+        }
+    }
+
+    // Lessons under a module — admin has full read access to module_lessons
+    // (unlike students, who only ever see module_lessons_public without
+    // video_url). Loaded for every module in the course at once, same as
+    // loadDownloads() does.
+    async loadLessons(courseId) {
+        try {
+            const moduleIds = this.modules.map(m => m.id);
+            if (moduleIds.length === 0) {
+                this.lessons = [];
+                this.renderModules();
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('module_lessons')
+                .select('*')
+                .in('module_id', moduleIds)
+                .order('lesson_order', { ascending: true });
+
+            if (error) throw error;
+
+            this.lessons = data || [];
+            this.renderModules();
+
+        } catch (error) {
+            console.error('Error loading lessons:', error);
+            this.lessons = [];
         }
     }
 
@@ -553,6 +585,131 @@ class AdminPanel {
         );
     }
 
+    // LESSONS CRUD OPERATIONS — a module can be split into multiple videos.
+    // Access/pricing stays at the module level; lessons are purely a
+    // presentation/content grouping under it.
+    openLessonModal(moduleId, lessonId = null) {
+        this.currentLessonModuleId = moduleId;
+        const modal = document.getElementById('lessonModal');
+        const title = document.getElementById('lessonModalTitle');
+        const module = this.modules.find(m => m.id === moduleId);
+
+        document.getElementById('lessonModuleId').value = moduleId;
+        document.getElementById('lessonModalSubtitle').textContent = module ? `Module: ${module.title}` : '';
+
+        if (lessonId) {
+            const lesson = this.lessons.find(l => l.id === lessonId);
+            if (lesson) {
+                title.textContent = 'Edit Lesson';
+                document.getElementById('lessonId').value = lesson.id;
+                document.getElementById('lessonTitle').value = lesson.title;
+                document.getElementById('lessonDescription').value = lesson.description || '';
+                document.getElementById('lessonVideoUrl').value = lesson.video_url || '';
+                document.getElementById('lessonDuration').value = lesson.duration || '';
+                document.getElementById('lessonOrder').value = lesson.lesson_order ?? 0;
+                document.getElementById('lessonIsPreview').checked = !!lesson.is_preview;
+            }
+        } else {
+            title.textContent = 'Add Lesson';
+            document.getElementById('lessonForm').reset();
+            document.getElementById('lessonId').value = '';
+            document.getElementById('lessonModuleId').value = moduleId;
+            // Default new lesson order to "end of the list" for this module
+            const existing = this.lessons.filter(l => l.module_id === moduleId);
+            document.getElementById('lessonOrder').value = existing.length;
+        }
+
+        modal.classList.add('active');
+    }
+
+    closeLessonModal() {
+        document.getElementById('lessonModal').classList.remove('active');
+        document.getElementById('lessonForm').reset();
+    }
+
+    async handleLessonSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('lessonSubmitBtn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline';
+        submitBtn.disabled = true;
+
+        const lessonId = document.getElementById('lessonId').value;
+        const moduleId = document.getElementById('lessonModuleId').value;
+
+        const lessonData = {
+            module_id: moduleId,
+            title: document.getElementById('lessonTitle').value,
+            description: document.getElementById('lessonDescription').value,
+            video_url: document.getElementById('lessonVideoUrl').value,
+            duration: document.getElementById('lessonDuration').value,
+            lesson_order: parseInt(document.getElementById('lessonOrder').value, 10) || 0,
+            is_preview: document.getElementById('lessonIsPreview').checked
+        };
+
+        try {
+            if (lessonId) {
+                const { error } = await supabase
+                    .from('module_lessons')
+                    .update(lessonData)
+                    .eq('id', lessonId);
+
+                if (error) throw error;
+                this.showMessage('✅ Lesson updated successfully!', 'success');
+            } else {
+                const { error } = await supabase
+                    .from('module_lessons')
+                    .insert([lessonData]);
+
+                if (error) throw error;
+                this.showMessage('✅ Lesson added successfully!', 'success');
+            }
+
+            await this.loadLessons(this.currentCourseId);
+            this.closeLessonModal();
+
+        } catch (error) {
+            console.error('Error saving lesson:', error);
+            this.showMessage('❌ Error saving lesson: ' + error.message, 'error');
+        } finally {
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    }
+
+    async deleteLesson(lessonId) {
+        const lesson = this.lessons.find(l => l.id === lessonId);
+        if (!lesson) return;
+
+        this.showConfirmModal(
+            'Delete Lesson',
+            `Are you sure you want to delete "${lesson.title}"? Any learner progress recorded against this lesson will also be removed. This action cannot be undone.`,
+            async () => {
+                try {
+                    const { error } = await supabase
+                        .from('module_lessons')
+                        .delete()
+                        .eq('id', lessonId);
+
+                    if (error) throw error;
+
+                    await this.loadLessons(this.currentCourseId);
+                    this.showMessage('✅ Lesson deleted successfully!', 'success');
+                    this.closeConfirmModal();
+
+                } catch (error) {
+                    console.error('Error deleting lesson:', error);
+                    this.showMessage('❌ Error deleting lesson: ' + error.message, 'error');
+                }
+            }
+        );
+    }
+
     // COURSES RENDERING AND FILTERING
     renderCourses() {
         const container = document.getElementById('adminCoursesList');
@@ -660,6 +817,9 @@ class AdminPanel {
 
         container.innerHTML = this.modules.map(module => {
             const moduleDownloads = this.downloads.filter(d => d.module_id === module.id);
+            const moduleLessons = this.lessons
+                .filter(l => l.module_id === module.id)
+                .sort((a, b) => (a.lesson_order || 0) - (b.lesson_order || 0));
 
             const downloadsHTML = moduleDownloads.length > 0 ? `
                 <div class="module-downloads">
@@ -673,6 +833,23 @@ class AdminPanel {
                 </div>
             ` : '';
 
+            // Once a module has at least one lesson, its own video_url is no
+            // longer used for playback (see get_lesson_video_url() vs
+            // get_module_video_url()) — it plays its lessons in order instead.
+            const lessonsHTML = moduleLessons.length > 0 ? `
+                <div class="module-downloads">
+                    ${moduleLessons.map((l, i) => `
+                        <div class="module-download-chip">
+                            <span>🎬 ${i + 1}. ${l.title}${l.is_preview ? ' 🔓' : ''}${l.duration ? ` · ${l.duration}` : ''}</span>
+                            <button class="btn-small" onclick="adminPanel.openLessonModal('${module.id}', '${l.id}')">Edit</button>
+                            <button class="btn-small btn-danger" onclick="adminPanel.deleteLesson('${l.id}')">Delete</button>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : (module.video_url ? '' : `
+                <p style="color:#e67e22; font-size:0.85rem; margin-top:0.5rem;">⚠️ No lessons and no video_url set — this module has nothing to play yet.</p>
+            `);
+
             return `
                 <div class="module-item">
                     <div class="module-info">
@@ -683,11 +860,14 @@ class AdminPanel {
                             <span>Tier: ${module.required_tier}</span>
                             ${module.is_premium ? '<span class="course-tier">PREMIUM</span>' : ''}
                             ${module.is_preview ? '<span class="course-tier" style="background:#2ecc71;">🔓 FREE PREVIEW</span>' : ''}
+                            ${moduleLessons.length > 0 ? `<span class="course-tier" style="background:#667eea;">📚 ${moduleLessons.length} LESSON${moduleLessons.length > 1 ? 'S' : ''}</span>` : ''}
                         </div>
                         <p style="color: #ccc; margin-top: 0.5rem; font-size: 0.9rem;">${module.description}</p>
+                        ${lessonsHTML}
                         ${downloadsHTML}
                     </div>
                     <div class="module-actions">
+                        <button class="btn-small" onclick="adminPanel.openLessonModal('${module.id}')">+ Lesson</button>
                         <button class="btn-small" onclick="adminPanel.openDownloadModal('${this.currentCourseId}', '${module.id}')">+ Resource</button>
                         <button class="btn-small" onclick="adminPanel.openModuleModal('${this.currentCourseId}', '${module.id}')">Edit</button>
                         <button class="btn-small btn-danger" onclick="adminPanel.deleteModule('${module.id}')">Delete</button>
@@ -1111,6 +1291,7 @@ class AdminPanel {
             
             await this.loadModules(courseId);
             await this.loadDownloads(courseId);
+            await this.loadLessons(courseId);
             document.getElementById('modulesView').classList.add('active');
         }
     }
@@ -1120,6 +1301,7 @@ class AdminPanel {
         this.currentCourseId = null;
         this.modules = [];
         this.downloads = [];
+        this.lessons = [];
     }
 
     showConfirmModal(title, message, confirmCallback) {

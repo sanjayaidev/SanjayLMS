@@ -101,6 +101,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 -- 5a. Expose per-module pricing through the public listing view, so
 --     course-detail.html can render "Add to order — ₹299" without needing
 --     admin-only access to the base table.
+-- IMPORTANT: Postgres only allows CREATE OR REPLACE VIEW to APPEND new
+-- columns at the end of the SELECT list — it errors if an existing column
+-- (like created_at below) appears to have "moved". So the new price /
+-- price_usd / is_purchasable_standalone columns must go LAST, after
+-- updated_at, even though that reads a little oddly.
 CREATE OR REPLACE VIEW course_modules_public
 WITH (security_invoker = false) AS
 SELECT
@@ -114,11 +119,11 @@ SELECT
     cm.is_premium,
     cm.is_preview,
     cm.is_active,
+    cm.created_at,
+    cm.updated_at,
     cm.price,
     cm.price_usd,
-    cm.is_purchasable_standalone,
-    cm.created_at,
-    cm.updated_at
+    cm.is_purchasable_standalone
 FROM course_modules cm
 JOIN courses c ON c.id = cm.course_id
 WHERE cm.is_active = true AND c.is_active = true;

@@ -407,6 +407,68 @@
         </div>
     </div>
 
+    <!-- Lesson Modal (add/edit a video within a module) -->
+    <div id="lessonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="lessonModalTitle">Add Lesson</h3>
+                <button class="close-btn" onclick="adminPanel.closeLessonModal()">✕</button>
+            </div>
+            <form id="lessonForm" class="modal-form">
+                <input type="hidden" id="lessonId" value="">
+                <input type="hidden" id="lessonModuleId" value="">
+                <p id="lessonModalSubtitle" style="color:#888; font-size:0.85rem; margin-top:-0.5rem;"></p>
+
+                <div class="form-group">
+                    <label for="lessonTitle">Title *</label>
+                    <input type="text" id="lessonTitle" required placeholder="e.g. Voice Cloning Basics">
+                </div>
+
+                <div class="form-group">
+                    <label for="lessonDescription">Description</label>
+                    <textarea id="lessonDescription" rows="2" placeholder="Optional short description"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="lessonVideoUrl">Video URL *</label>
+                    <input type="text" id="lessonVideoUrl" required placeholder="Mux playback ID, YouTube link, Drive/Dropbox link, or direct .mp4 URL">
+                    <small style="color:#888; display:block; margin-top:0.25rem;">
+                        Never shown to students directly — served only through the secure
+                        get_lesson_video_url() check after their access is verified.
+                    </small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lessonDuration">Duration</label>
+                        <input type="text" id="lessonDuration" placeholder="e.g., 8 min">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lessonOrder">Order</label>
+                        <input type="number" id="lessonOrder" min="0" step="1" value="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="lessonIsPreview">
+                        <span class="checkmark"></span>
+                        🔓 Free Preview (this one lesson is watchable before buying, even if the module isn't)
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="adminPanel.closeLessonModal()">Cancel</button>
+                    <button type="submit" class="cta-button" id="lessonSubmitBtn">
+                        <span class="btn-text">Save Lesson</span>
+                        <span class="btn-loading" style="display: none;">Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Grant Course Access Modal -->
     <div id="grantAccessModal" class="modal">
         <div class="modal-content">
