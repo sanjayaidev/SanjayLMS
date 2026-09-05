@@ -58,10 +58,13 @@
                 <div class="checkout-course">
                     <div>
                         <h2 id="courseTitle"></h2>
-                        <div style="color:#888; font-size:0.85rem;">One-time purchase</div>
+                        <div style="color:#888; font-size:0.85rem;" id="checkoutSubtitle">One-time purchase</div>
                     </div>
                     <div class="price" id="coursePrice"></div>
                 </div>
+
+                <!-- Only populated/shown for a-la-carte module orders (?modules=id1,id2,...) -->
+                <ul id="cartItems" style="list-style:none; padding:0; margin:0 0 1.5rem; display:none;"></ul>
 
                 <div class="provider-options">
                     <!-- Razorpay as the default INR payment option -->
@@ -109,9 +112,14 @@
         // in this app — so checkout now reuses the single shared client
         // from auth-manager.js, same as every other authenticated page.
 
-        const params   = new URLSearchParams(location.search);
-        const courseId = params.get('course');
+        const params    = new URLSearchParams(location.search);
+        const courseId  = params.get('course');
+        // Comma-separated course_modules.id list = a-la-carte cart checkout.
+        // Absent/empty = the classic full-course checkout.
+        const moduleIds = (params.get('modules') || '').split(',').map(s => s.trim()).filter(Boolean);
+        const isModuleCart = moduleIds.length > 0;
         let course = null;
+        let cartModules = [];
         let session = null;
 
         document.querySelectorAll('.provider-option').forEach(el => {
@@ -172,9 +180,36 @@
             }
             course = data;
 
-            const price = parseFloat(course.price);
-            if (!Number.isFinite(price) || price <= 0) {
-                // Free course — skip payment UI entirely, enroll directly.
+            if (isModuleCart) {
+                const { data: mods, error: modErr } = await window.supabase
+                    .from('course_modules')
+                    .select('id, title, price, price_usd')
+                    .eq('course_id', courseId)
+                    .eq('is_active', true)
+                    .eq('is_purchasable_standalone', true)
+                    .in('id', moduleIds);
+
+                if (modErr || !mods || mods.length === 0) {
+                    document.getElementById('checkoutLoading').textContent = 'Selected modules not found.';
+                    return;
+                }
+                cartModules = mods;
+            }
+
+            // Client-side total is for DISPLAY ONLY — the amount actually
+            // charged is always recomputed server-side in /api/create-order
+            // (and /api/enroll-free) from the DB, so a tampered request here
+            // can't change what gets paid.
+            const totalInr = isModuleCart
+                ? cartModules.reduce((s, m) => s + parseFloat(m.price || 0), 0)
+                : parseFloat(course.price);
+            const totalUsd = isModuleCart
+                ? (cartModules.every(m => Number.isFinite(parseFloat(m.price_usd)))
+                    ? cartModules.reduce((s, m) => s + parseFloat(m.price_usd), 0) : NaN)
+                : parseFloat(course.price_usd);
+
+            if (!Number.isFinite(totalInr) || totalInr <= 0) {
+                // Free course/modules — skip payment UI entirely, enroll directly.
                 document.getElementById('checkoutLoading').textContent = 'Enrolling you…';
                 try {
                     const res = await fetch('/api/enroll-free', {
@@ -183,7 +218,9 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${session.access_token}`,
                         },
-                        body: JSON.stringify({ course_id: courseId }),
+                        body: JSON.stringify(isModuleCart
+                            ? { course_id: courseId, module_ids: cartModules.map(m => m.id) }
+                            : { course_id: courseId }),
                     });
                     const result = await res.json();
                     if (!res.ok) throw new Error(result.error || 'Enrollment failed');
@@ -194,26 +231,53 @@
                 return;
             }
 
-            document.getElementById('courseTitle').textContent = course.title;
+            if (isModuleCart) {
+                document.getElementById('courseTitle').textContent = `${course.title} — ${cartModules.length} module${cartModules.length > 1 ? 's' : ''}`;
+                document.getElementById('checkoutSubtitle').textContent = 'A-la-carte module purchase';
+                const list = document.getElementById('cartItems');
+                list.style.display = 'block';
+                list.innerHTML = cartModules.map(m => `
+                    <li style="display:flex; justify-content:space-between; padding:0.4rem 0; font-size:0.9rem; color:#555;">
+                        <span>${m.title}</span>
+                        <span data-inr="${parseFloat(m.price || 0).toFixed(2)}" data-usd="${Number.isFinite(parseFloat(m.price_usd)) ? parseFloat(m.price_usd).toFixed(2) : ''}"></span>
+                    </li>
+                `).join('');
+            } else {
+                document.getElementById('courseTitle').textContent = course.title;
+            }
+
             updatePriceDisplay();
             document.getElementById('checkoutLoading').style.display = 'none';
             document.getElementById('checkoutBody').style.display = 'block';
 
-            // Hide PayPal option entirely if this course has no USD price set
-            const usdPrice = parseFloat(course.price_usd);
-            if (!Number.isFinite(usdPrice) || usdPrice <= 0) {
+            // Hide PayPal option entirely if this order has no USD price set
+            if (!Number.isFinite(totalUsd) || totalUsd <= 0) {
                 document.querySelector('.provider-option[data-provider="paypal"]').style.display = 'none';
             }
+        }
+
+        function cartTotals() {
+            if (!isModuleCart) return { inr: parseFloat(course.price), usd: parseFloat(course.price_usd) };
+            return {
+                inr: cartModules.reduce((s, m) => s + parseFloat(m.price || 0), 0),
+                usd: cartModules.every(m => Number.isFinite(parseFloat(m.price_usd)))
+                    ? cartModules.reduce((s, m) => s + parseFloat(m.price_usd), 0) : NaN,
+            };
         }
 
         function updatePriceDisplay() {
             const provider = selectedProvider();
             const priceEl = document.getElementById('coursePrice');
-            if (provider === 'paypal') {
-                priceEl.textContent = '$' + parseFloat(course.price_usd).toFixed(2);
-            } else {
-                priceEl.textContent = '₹' + parseFloat(course.price).toFixed(2);
-            }
+            const { inr, usd } = cartTotals();
+            const useUsd = provider === 'paypal';
+
+            priceEl.textContent = useUsd ? '$' + usd.toFixed(2) : '₹' + inr.toFixed(2);
+
+            // Update the per-line-item currency shown in the cart list too
+            document.querySelectorAll('#cartItems [data-inr]').forEach(el => {
+                const v = useUsd ? el.dataset.usd : el.dataset.inr;
+                el.textContent = v ? (useUsd ? '$' + v : '₹' + v) : '—';
+            });
         }
 
         async function startPayment() {
@@ -231,7 +295,9 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.access_token}`,
                     },
-                    body: JSON.stringify({ course_id: courseId, provider }),
+                    body: JSON.stringify(isModuleCart
+                        ? { course_id: courseId, module_ids: cartModules.map(m => m.id), provider }
+                        : { course_id: courseId, provider }),
                 });
                 
                 // Check if response is OK before parsing JSON
@@ -285,7 +351,7 @@
                         amount: Math.round(data.amount * 100),
                         currency: data.currency,
                         name: 'Course Purchase',
-                        description: course.title,
+                        description: isModuleCart ? `${course.title}: ${cartModules.map(m => m.title).join(', ')}` : course.title,
                         order_id: data.razorpay_order_id,
                         handler: function () {
                             location.href = `/checkout-status.html?order_id=${data.order_id}&provider=razorpay&course_id=${courseId}`;

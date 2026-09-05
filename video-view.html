@@ -499,6 +499,16 @@
 
                 this.hasPurchased = !!userCourse;
 
+                // Modules bought a-la-carte (without owning the whole course).
+                // Same RPC course-detail.html uses — user_course_modules has
+                // no client-facing SELECT-all policy, so this goes through a
+                // SECURITY DEFINER function instead of a direct table read.
+                this.ownedModuleIds = new Set();
+                if (!this.hasPurchased) {
+                    const { data: ownedIds } = await window.supabase.rpc('get_my_owned_module_ids', { p_course_id: courseId });
+                    (ownedIds || []).forEach(id => this.ownedModuleIds.add(id));
+                }
+
                 // If not purchased, we don't bail out here anymore — a free preview module
                 // may still be playable. We check per-module access further below, once we
                 // know which module was requested.
@@ -544,12 +554,23 @@
                     document.getElementById('accessDenied').style.display = 'block';
 
                     // If it's simply not purchased (rather than a tier issue), point them to checkout
-                    if (!this.hasPurchased) {
+                    if (!this.hasPurchased && !this.ownedModuleIds.has(this.currentModule.id)) {
                         const denied = document.getElementById('accessDenied');
-                        denied.querySelector('p').textContent = 'This module is locked. Buy the course to unlock it.';
-                        const link = denied.querySelector('a');
-                        link.href = `/checkout.html?course=${courseId}`;
-                        link.textContent = 'Buy This Course';
+                        const canBuyStandalone = this.currentModule.is_purchasable_standalone &&
+                            Number.isFinite(parseFloat(this.currentModule.price)) && parseFloat(this.currentModule.price) > 0;
+
+                        if (canBuyStandalone) {
+                            denied.querySelector('p').textContent =
+                                `This module is locked. Buy it alone for ₹${parseFloat(this.currentModule.price).toFixed(2)}, or get the full course.`;
+                            const link = denied.querySelector('a');
+                            link.href = `/checkout.html?course=${courseId}&modules=${this.currentModule.id}`;
+                            link.textContent = 'Buy This Module';
+                        } else {
+                            denied.querySelector('p').textContent = 'This module is locked. Buy the course to unlock it.';
+                            const link = denied.querySelector('a');
+                            link.href = `/checkout.html?course=${courseId}`;
+                            link.textContent = 'Buy This Course';
+                        }
                     }
                     return;
                 }
@@ -577,7 +598,10 @@
                 // Free preview modules are watchable by anyone logged in, purchased or not.
                 if (module.is_preview) return true;
 
-                // Everything else requires the course to be purchased.
+                // Bought this exact module a la carte — unlocked regardless of tier.
+                if (this.ownedModuleIds?.has(module.id)) return true;
+
+                // Otherwise the whole course must be purchased.
                 if (!this.hasPurchased) return false;
 
                 const tierLevel = { 'basic': 1, 'premium': 2 };

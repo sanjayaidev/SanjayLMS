@@ -56,6 +56,30 @@ async function alreadyOwns(userId, courseId) {
   return !!rows?.[0];
 }
 
+// ─── Module-cart helpers (a-la-carte purchases) ─────────────────────────────
+// The client sends module_ids only. We look every one up server-side —
+// including price, is_purchasable_standalone, and is_active — so a tampered
+// request can never buy a module for less than its real price, or buy one
+// that isn't for sale on its own.
+async function getPurchasableModules(courseId, moduleIds) {
+  const idList = moduleIds.map(id => `"${id}"`).join(',');
+  const rows = await svc(
+    'GET',
+    `/course_modules?id=in.(${idList})&course_id=eq.${courseId}&is_active=eq.true&is_purchasable_standalone=eq.true` +
+    `&select=id,title,price,price_usd`
+  );
+  return rows || [];
+}
+
+async function alreadyOwnsModules(userId, moduleIds) {
+  const idList = moduleIds.map(id => `"${id}"`).join(',');
+  const rows = await svc(
+    'GET',
+    `/user_course_modules?user_id=eq.${userId}&module_id=in.(${idList})&payment_status=eq.completed&select=module_id`
+  );
+  return new Set((rows || []).map(r => r.module_id));
+}
+
 // ─── Main handler ────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -79,7 +103,7 @@ export default async function handler(req, res) {
   const user  = await getUser(token);
   if (!user) return res.status(401).json({ error: 'Not authenticated', code: 'AUTH_REQUIRED' });
 
-  const { course_id, provider } = req.body || {};
+  const { course_id, module_ids, provider } = req.body || {};
   if (!course_id) return res.status(400).json({ error: 'Missing course_id' });
   if (!['razorpay', 'paypal', 'cashfree'].includes(provider)) {
     return res.status(400).json({ error: 'provider must be "razorpay", "paypal", or "cashfree"' });
@@ -88,22 +112,55 @@ export default async function handler(req, res) {
   const course = await getCourse(course_id);
   if (!course) return res.status(404).json({ error: 'Course not found' });
 
-  if (await alreadyOwns(user.id, course_id)) {
-    return res.status(409).json({ error: 'You already own this course', code: 'ALREADY_OWNED' });
-  }
+  // Cart of individual modules ("pick modules" flow) vs. the whole course
+  // ("full package" flow). module_ids is only present/non-empty for the former.
+  const isModuleCart = Array.isArray(module_ids) && module_ids.length > 0;
 
-  const amountInr = parseFloat(course.price);
-  const amountUsd = parseFloat(course.price_usd);
+  let itemType, amountInr, amountUsd, cartModules;
+
+  if (isModuleCart) {
+    if (await alreadyOwns(user.id, course_id)) {
+      return res.status(409).json({ error: 'You already own the full course', code: 'ALREADY_OWNED' });
+    }
+
+    cartModules = await getPurchasableModules(course_id, module_ids);
+    if (cartModules.length === 0) {
+      return res.status(400).json({ error: 'None of the requested modules are available for standalone purchase' });
+    }
+
+    const owned = await alreadyOwnsModules(user.id, cartModules.map(m => m.id));
+    cartModules = cartModules.filter(m => !owned.has(m.id));
+    if (cartModules.length === 0) {
+      return res.status(409).json({ error: 'You already own every module in this order', code: 'ALREADY_OWNED' });
+    }
+
+    itemType   = 'modules';
+    amountInr  = cartModules.reduce((sum, m) => sum + parseFloat(m.price || 0), 0);
+    amountUsd  = cartModules.every(m => Number.isFinite(parseFloat(m.price_usd)))
+      ? cartModules.reduce((sum, m) => sum + parseFloat(m.price_usd), 0)
+      : NaN; // PayPal unavailable if any selected module lacks a USD price
+  } else {
+    if (await alreadyOwns(user.id, course_id)) {
+      return res.status(409).json({ error: 'You already own this course', code: 'ALREADY_OWNED' });
+    }
+    itemType  = 'full_course';
+    amountInr = parseFloat(course.price);
+    amountUsd = parseFloat(course.price_usd);
+  }
 
   if (provider === 'paypal' && (!Number.isFinite(amountUsd) || amountUsd <= 0)) {
     return res.status(400).json({
-      error: 'This course does not have a USD price set — PayPal is unavailable for it. Use Razorpay instead.',
+      error: isModuleCart
+        ? 'One or more selected modules do not have a USD price set — PayPal is unavailable for this order. Use Razorpay instead.'
+        : 'This course does not have a USD price set — PayPal is unavailable for it. Use Razorpay instead.',
       code:  'NO_USD_PRICE',
     });
   }
   if ((provider === 'razorpay' || provider === 'cashfree') && (!Number.isFinite(amountInr) || amountInr <= 0)) {
     return res.status(400).json({
-      error: 'This course is free — use /api/enroll-free instead of /api/create-order',
+      error: isModuleCart
+        ? 'This order totals ₹0 — use /api/enroll-free instead of /api/create-order'
+        : 'This course is free — use /api/enroll-free instead of /api/create-order',
       code:  'COURSE_IS_FREE',
     });
   }
@@ -116,7 +173,12 @@ export default async function handler(req, res) {
   const origin     = req.headers.origin || `https://${req.headers.host}`;
   const isTestMode = process.env.PRODUCTION_MODE !== 'true';
 
-  console.log(`[create-order] user=${user.id} course=${course_id} provider=${provider} mode=${isTestMode ? 'TEST' : 'PRODUCTION'}`);
+  // Human-readable description for provider dashboards / receipts.
+  const description = isModuleCart
+    ? `${course.title}: ${cartModules.map(m => m.title).join(', ')}`
+    : `${course.title} (full package)`;
+
+  console.log(`[create-order] user=${user.id} course=${course_id} item_type=${itemType} provider=${provider} mode=${isTestMode ? 'TEST' : 'PRODUCTION'}`);
 
   async function insertPendingOrder(extra = {}) {
     await svc('POST', '/payment_orders', {
@@ -127,21 +189,23 @@ export default async function handler(req, res) {
       status:   'pending',
       amount,
       currency: provider === 'paypal' ? 'USD' : 'INR',
+      item_type:  itemType,
+      module_ids: isModuleCart ? cartModules.map(m => m.id) : null,
       ...extra,
     });
   }
 
   if (provider === 'razorpay') {
-    return handleRazorpay(res, { course, amount, orderId, user, insertPendingOrder, isTestMode });
+    return handleRazorpay(res, { course, description, amount, orderId, user, insertPendingOrder, isTestMode });
   }
   if (provider === 'cashfree') {
-    return handleCashfree(res, { course, amount, orderId, user, origin, insertPendingOrder, isTestMode });
+    return handleCashfree(res, { course, description, amount, orderId, user, origin, insertPendingOrder, isTestMode });
   }
-  return handlePaypal(res, { course, amount, orderId, course_id, origin, insertPendingOrder, isTestMode });
+  return handlePaypal(res, { course, description, amount, orderId, course_id, origin, insertPendingOrder, isTestMode });
 }
 
 // ─── Razorpay ────────────────────────────────────────────────────────────────
-async function handleRazorpay(res, { course, amount, orderId, user, insertPendingOrder, isTestMode }) {
+async function handleRazorpay(res, { course, description, amount, orderId, user, insertPendingOrder, isTestMode }) {
   const keyId = isTestMode
     ? (process.env.RAZORPAY_TEST_KEY_ID     || process.env.RAZORPAY_KEY_ID)
     : process.env.RAZORPAY_KEY_ID;
@@ -164,7 +228,7 @@ async function handleRazorpay(res, { course, amount, orderId, user, insertPendin
         amount:   Math.round(amount * 100), // paise
         currency: 'INR',
         receipt:  orderId,
-        notes:    { course_id: course.id, user_id: user.id, course_title: course.title },
+        notes:    { course_id: course.id, user_id: user.id, description },
       }),
     });
     const order = await rzpRes.json();
@@ -196,7 +260,7 @@ async function handleRazorpay(res, { course, amount, orderId, user, insertPendin
 // (cashfree.checkout()) to render drop-in checkout. Actual payment
 // confirmation is polled independently in verify-order.js — the
 // payment_session_id alone never grants access.
-async function handleCashfree(res, { course, amount, orderId, user, origin, insertPendingOrder, isTestMode }) {
+async function handleCashfree(res, { course, description, amount, orderId, user, origin, insertPendingOrder, isTestMode }) {
   const appId = isTestMode
     ? (process.env.CASHFREE_TEST_APP_ID     || process.env.CASHFREE_APP_ID)
     : process.env.CASHFREE_APP_ID;
@@ -234,7 +298,7 @@ async function handleCashfree(res, { course, amount, orderId, user, origin, inse
         order_meta: {
           return_url: `${origin}/checkout-status.html?order_id=${orderId}&provider=cashfree&course_id=${course.id}`,
         },
-        order_note: `Course: ${course.title}`.slice(0, 255),
+        order_note: description.slice(0, 255),
       }),
     });
     const order = await cfRes.json();
@@ -264,7 +328,7 @@ async function handleCashfree(res, { course, amount, orderId, user, origin, inse
 // Uses the v2 Orders API (create -> approve -> capture), not the deprecated
 // v1 Payments API. Capture happens later in verify-order.js once the buyer
 // has approved on PayPal's site.
-async function handlePaypal(res, { course, amount, orderId, course_id, origin, insertPendingOrder, isTestMode }) {
+async function handlePaypal(res, { course, description, amount, orderId, course_id, origin, insertPendingOrder, isTestMode }) {
   const clientId = isTestMode
     ? (process.env.PAYPAL_SANDBOX_CLIENT_ID     || process.env.PAYPAL_CLIENT_ID)
     : process.env.PAYPAL_CLIENT_ID;
@@ -305,7 +369,7 @@ async function handlePaypal(res, { course, amount, orderId, course_id, origin, i
         purchase_units: [{
           reference_id: orderId,
           custom_id:    orderId,
-          description:  `Course: ${course.title}`.slice(0, 127),
+          description:  description.slice(0, 127),
           amount: { currency_code: 'USD', value: amount.toFixed(2) },
         }],
         application_context: {

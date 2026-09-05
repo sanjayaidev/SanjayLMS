@@ -397,7 +397,10 @@ class AdminPanel {
             video_url: document.getElementById('moduleVideoUrl').value,
             required_tier: document.getElementById('moduleTier').value,
             is_premium: document.getElementById('moduleIsPremium').checked,
-            is_preview: document.getElementById('moduleIsPreview').checked
+            is_preview: document.getElementById('moduleIsPreview').checked,
+            is_purchasable_standalone: document.getElementById('moduleIsPurchasableStandalone').checked,
+            price: document.getElementById('modulePrice').value ? parseFloat(document.getElementById('modulePrice').value) : null,
+            price_usd: document.getElementById('modulePriceUsd').value ? parseFloat(document.getElementById('modulePriceUsd').value) : null
         };
 
         try {
@@ -1023,6 +1026,9 @@ class AdminPanel {
                 document.getElementById('moduleTier').value = module.required_tier;
                 document.getElementById('moduleIsPremium').checked = module.is_premium;
                 document.getElementById('moduleIsPreview').checked = !!module.is_preview;
+                document.getElementById('moduleIsPurchasableStandalone').checked = module.is_purchasable_standalone !== false;
+                document.getElementById('modulePrice').value = module.price ?? '';
+                document.getElementById('modulePriceUsd').value = module.price_usd ?? '';
             }
         } else {
             // Create mode

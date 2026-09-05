@@ -56,12 +56,53 @@ export default async function handler(req, res) {
   const user  = await getUser(token);
   if (!user) return res.status(401).json({ error: 'Not authenticated', code: 'AUTH_REQUIRED' });
 
-  const { course_id } = req.body || {};
+  const { course_id, module_ids } = req.body || {};
   if (!course_id) return res.status(400).json({ error: 'Missing course_id' });
 
   const courses = await svc('GET', `/courses?id=eq.${course_id}&is_active=eq.true&select=id,price&limit=1`);
   const course  = courses?.[0];
   if (!course) return res.status(404).json({ error: 'Course not found' });
+
+  const isModuleCart = Array.isArray(module_ids) && module_ids.length > 0;
+
+  if (isModuleCart) {
+    // Free-module enrollment: only modules explicitly priced at 0 (or with
+    // no price set) are eligible — same "server decides the price" rule as
+    // create-order.js.
+    const idList = module_ids.map(id => `"${id}"`).join(',');
+    const modules = await svc(
+      'GET',
+      `/course_modules?id=in.(${idList})&course_id=eq.${course_id}&is_active=eq.true&is_purchasable_standalone=eq.true&select=id,price`
+    );
+    const freeModules = (modules || []).filter(m => !Number.isFinite(parseFloat(m.price)) || parseFloat(m.price) <= 0);
+    if (freeModules.length === 0) {
+      return res.status(400).json({ error: 'None of the requested modules are free — use /api/create-order instead', code: 'MODULE_NOT_FREE' });
+    }
+
+    for (const m of freeModules) {
+      try {
+        await svc('POST', '/user_course_modules', {
+          user_id:         user.id,
+          module_id:       m.id,
+          course_id,
+          payment_status:  'completed',
+          purchased_price: 0,
+        });
+      } catch (err) {
+        const msg = String(err.message);
+        if (!msg.includes('409') && !msg.includes('23505')) throw err;
+      }
+    }
+
+    await svc('POST', '/user_activity', {
+      user_id:       user.id,
+      activity_type: 'course_purchase',
+      course_id,
+      metadata: { free: true, module_ids: freeModules.map(m => m.id) },
+    });
+
+    return res.status(200).json({ success: true, module_ids: freeModules.map(m => m.id) });
+  }
 
   const price = parseFloat(course.price);
   if (Number.isFinite(price) && price > 0) {

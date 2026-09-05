@@ -69,6 +69,42 @@ async function grantCourseAccess(order, providerOrderId) {
   });
 }
 
+// A-la-carte module purchases: grant each module individually instead of
+// the whole course. Same idempotency approach — unique(user_id, module_id)
+// on user_course_modules absorbs repeat poll ticks as "already granted".
+async function grantModuleAccess(order, providerOrderId) {
+  const moduleIds = order.module_ids || [];
+  const perModulePrice = moduleIds.length ? order.amount / moduleIds.length : 0;
+
+  for (const moduleId of moduleIds) {
+    try {
+      await svc('POST', '/user_course_modules', {
+        user_id:          order.user_id,
+        module_id:        moduleId,
+        course_id:        order.course_id,
+        payment_status:   'completed',
+        purchased_price:  perModulePrice,
+      });
+    } catch (err) {
+      const msg = String(err.message);
+      if (!msg.includes('409') && !msg.includes('23505')) throw err;
+    }
+  }
+
+  await svc('POST', '/user_activity', {
+    user_id:       order.user_id,
+    activity_type: 'course_purchase',
+    course_id:     order.course_id,
+    metadata: {
+      provider:           order.provider,
+      order_id:           order.order_id,
+      provider_order_id:  providerOrderId,
+      amount:              order.amount,
+      module_ids:          moduleIds,
+    },
+  });
+}
+
 // ─── Provider status checkers ────────────────────────────────────────────────
 async function checkCashfree(order) {
   const appId = isTestMode
@@ -225,12 +261,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ paid: false, status: result.status || 'pending' });
     }
 
-    await grantCourseAccess(order, result.provider_order_id);
+    if (order.item_type === 'modules') {
+      await grantModuleAccess(order, result.provider_order_id);
+    } else {
+      await grantCourseAccess(order, result.provider_order_id);
+    }
     await updateOrder(order_id, { status: 'paid', provider_order_id: result.provider_order_id });
 
-    console.log(`[verify-order] ${order_id} PAID — course ${order.course_id} granted to user ${order.user_id}`);
+    console.log(`[verify-order] ${order_id} PAID — ${order.item_type === 'modules' ? `modules ${JSON.stringify(order.module_ids)}` : `course ${order.course_id}`} granted to user ${order.user_id}`);
 
-    return res.status(200).json({ paid: true, status: 'paid', course_id: order.course_id });
+    return res.status(200).json({
+      paid: true,
+      status: 'paid',
+      course_id: order.course_id,
+      item_type: order.item_type,
+      module_ids: order.module_ids || undefined,
+    });
 
   } catch (err) {
     console.error('[verify-order]', err);

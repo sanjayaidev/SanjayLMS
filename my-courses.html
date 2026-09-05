@@ -280,6 +280,57 @@
                 }
 
                 this.filteredCourses = [...this.myCourses];
+
+                await this.loadMyModules();
+            }
+
+            // A-la-carte module purchases: courses the learner has partial
+            // (not full) access to, because they bought individual modules
+            // instead of the whole package. Rendered as separate cards below
+            // the fully-owned courses.
+            async loadMyModules() {
+                const fullyOwnedCourseIds = new Set(this.myCourses.map(uc => uc.course_id));
+
+                const { data: ownedModules } = await window.supabase
+                    .from('user_course_modules')
+                    .select('module_id, course_id, purchased_at')
+                    .eq('user_id', this.currentUser.id)
+                    .eq('payment_status', 'completed');
+
+                const relevant = (ownedModules || []).filter(m => !fullyOwnedCourseIds.has(m.course_id));
+                this.partialCourses = [];
+                if (relevant.length === 0) return;
+
+                // Group owned module ids by course
+                const byCourse = {};
+                relevant.forEach(m => {
+                    (byCourse[m.course_id] ||= []).push(m.module_id);
+                });
+
+                for (const courseId of Object.keys(byCourse)) {
+                    const { data: course } = await window.supabase
+                        .from('courses')
+                        .select('*')
+                        .eq('id', courseId)
+                        .single();
+                    if (!course) continue;
+
+                    // course_modules_public (not the admin-locked base table) —
+                    // same view course-detail.html uses to list modules.
+                    const { data: allModules } = await window.supabase
+                        .from('course_modules_public')
+                        .select('id, title, module_order')
+                        .eq('course_id', courseId)
+                        .order('module_order');
+
+                    this.courseDetails[courseId] = course;
+                    this.partialCourses.push({
+                        course,
+                        ownedModuleIds: byCourse[courseId],
+                        totalModules: (allModules || []).length,
+                        ownedModules: (allModules || []).filter(m => byCourse[courseId].includes(m.id)),
+                    });
+                }
             }
 
             setupEventListeners() {
@@ -349,7 +400,10 @@
                 const container = document.getElementById('coursesContainer');
                 const emptyState = document.getElementById('emptyState');
 
-                if (this.filteredCourses.length === 0) {
+                const hasFull = this.filteredCourses.length > 0;
+                const hasPartial = (this.partialCourses || []).length > 0;
+
+                if (!hasFull && !hasPartial) {
                     container.style.display = 'none';
                     emptyState.style.display = 'block';
                     return;
@@ -358,7 +412,7 @@
                 container.style.display = 'grid';
                 emptyState.style.display = 'none';
 
-                container.innerHTML = this.filteredCourses.map(uc => {
+                const fullCards = this.filteredCourses.map(uc => {
                     const course = this.courseDetails[uc.course_id];
                     if (!course) return '';
 
@@ -384,6 +438,31 @@
                         </div>
                     `;
                 }).join('');
+
+                // A-la-carte purchases: labeled distinctly ("N of M modules")
+                // since the learner doesn't own the whole course yet, with a
+                // shortcut back to the cart to pick up the rest.
+                const partialCards = (this.partialCourses || []).map(({ course, ownedModules, totalModules }) => `
+                    <div class="course-card unlocked" style="border: 2px dashed #667eea;">
+                        <div class="access-badge" style="background:#f0ad4e;">🧩 ${ownedModules.length} of ${totalModules} Modules</div>
+                        <h3>${course.title}</h3>
+                        <p>${course.description.substring(0, 100)}${course.description.length > 100 ? '...' : ''}</p>
+                        <div class="course-meta">
+                            <span class="course-tier">${course.required_tier.toUpperCase()} TIER</span>
+                            <span class="progress-badge">A-la-carte</span>
+                        </div>
+                        <ul style="font-size:0.8rem; color:#666; margin:0.5rem 0; padding-left:1.2rem;">
+                            ${ownedModules.map(m => `<li>${m.title}</li>`).join('')}
+                        </ul>
+                        <div class="course-actions">
+                            <button class="cta-button" onclick="window.lmsRouter.goToCourse('${course.id}')">
+                                Continue Learning
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                container.innerHTML = fullCards + partialCards;
             }
 
             async logout() {

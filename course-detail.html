@@ -460,6 +460,27 @@
 
                     <!-- Sidebar -->
                     <div class="sidebar">
+                        <!-- Build Your Order Card (a-la-carte modules + full package) -->
+                        <div class="info-card" id="orderBuilder" style="display:none;">
+                            <h4>🛒 Build Your Order</h4>
+                            <p style="font-size:0.85rem; color:#888; margin:0 0 0.75rem;">
+                                Buy the full package, or pick just the modules you need.
+                            </p>
+                            <button id="fullPackageBtn" class="cta-button" style="width:100%; margin-bottom:0.75rem;">
+                                Get Full Package — <span id="fullPackagePrice"></span>
+                            </button>
+                            <div id="orderModuleList" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.75rem;">
+                                <!-- One checkbox row per standalone-purchasable, not-yet-owned module -->
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.9rem; font-weight:600; padding-top:0.5rem; border-top:1px solid #eee; margin-bottom:0.75rem;">
+                                <span>Order total</span>
+                                <span id="orderTotal">₹0</span>
+                            </div>
+                            <button id="checkoutSelectedBtn" class="cta-button" style="width:100%;" disabled>
+                                Checkout selected modules
+                            </button>
+                        </div>
+
                         <!-- Downloads Card -->
                         <div class="info-card">
                             <h4>📥 Downloadable Resources</h4>
@@ -636,7 +657,17 @@
                     this.userProgress[p.module_id] = p;
                 });
 
+                // Modules bought a-la-carte (without owning the whole course).
+                // Uses a SECURITY DEFINER RPC rather than a direct table read
+                // since user_course_modules has no client-facing SELECT-all policy.
+                this.ownedModuleIds = new Set();
+                if (!this.hasPurchased) {
+                    const { data: ownedIds } = await window.supabase.rpc('get_my_owned_module_ids', { p_course_id: courseId });
+                    (ownedIds || []).forEach(id => this.ownedModuleIds.add(id));
+                }
+
                 this.renderCourse();
+                this.renderOrderBuilder();
                 
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('courseContent').style.display = 'block';
@@ -685,7 +716,11 @@
                 // Free preview modules are watchable by anyone logged in, purchased or not.
                 if (module.is_preview) return true;
 
-                // Everything else requires the course to be purchased.
+                // Bought this exact module a la carte — unlocked regardless of tier,
+                // since the buyer paid for this module specifically.
+                if (this.ownedModuleIds?.has(module.id)) return true;
+
+                // Otherwise the whole course must be purchased.
                 if (!this.hasPurchased) return false;
 
                 const tierLevel = { 'basic': 1, 'premium': 2 };
@@ -693,6 +728,76 @@
                 const moduleTierLevel = tierLevel[module.required_tier] || 1;
                 
                 return userTierLevel >= moduleTierLevel;
+            }
+
+            // ─── Build Your Order (a-la-carte module cart) ──────────────────
+            // Mirrors the "full package vs pick modules" pattern from the
+            // AICreator sales page: a running cart total that updates as
+            // the learner checks/unchecks individual modules.
+            renderOrderBuilder() {
+                const panel = document.getElementById('orderBuilder');
+
+                // Already own the whole course — nothing left to sell.
+                if (this.hasPurchased) {
+                    panel.style.display = 'none';
+                    return;
+                }
+
+                // Only modules priced for standalone sale, not already owned,
+                // and not already unlocked as a free preview.
+                const sellable = this.modules.filter(m =>
+                    m.is_purchasable_standalone &&
+                    Number.isFinite(parseFloat(m.price)) && parseFloat(m.price) > 0 &&
+                    !this.ownedModuleIds?.has(m.id) &&
+                    !m.is_preview
+                );
+
+                if (sellable.length === 0) {
+                    panel.style.display = 'none';
+                    return;
+                }
+
+                panel.style.display = 'block';
+                this.cartSelection = new Set();
+
+                document.getElementById('fullPackagePrice').textContent = '₹' + parseFloat(this.course.price).toFixed(2);
+                document.getElementById('fullPackageBtn').onclick = () => {
+                    location.href = `/checkout.html?course=${this.course.id}`;
+                };
+
+                const list = document.getElementById('orderModuleList');
+                list.innerHTML = sellable.map((m, i) => `
+                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
+                        <input type="checkbox" data-module-id="${m.id}" data-price="${parseFloat(m.price).toFixed(2)}">
+                        <span style="flex:1;">${i + 1}. ${m.title}</span>
+                        <span style="color:#667eea; font-weight:600;">₹${parseFloat(m.price).toFixed(2)}</span>
+                    </label>
+                `).join('');
+
+                list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        if (cb.checked) this.cartSelection.add(cb.dataset.moduleId);
+                        else this.cartSelection.delete(cb.dataset.moduleId);
+                        this.updateOrderTotal(sellable);
+                    });
+                });
+
+                this.updateOrderTotal(sellable);
+            }
+
+            updateOrderTotal(sellable) {
+                const total = sellable
+                    .filter(m => this.cartSelection.has(m.id))
+                    .reduce((sum, m) => sum + parseFloat(m.price), 0);
+
+                document.getElementById('orderTotal').textContent = '₹' + total.toFixed(2);
+
+                const checkoutBtn = document.getElementById('checkoutSelectedBtn');
+                checkoutBtn.disabled = this.cartSelection.size === 0;
+                checkoutBtn.onclick = () => {
+                    const ids = Array.from(this.cartSelection).join(',');
+                    location.href = `/checkout.html?course=${this.course.id}&modules=${encodeURIComponent(ids)}`;
+                };
             }
 
             renderModules() {
