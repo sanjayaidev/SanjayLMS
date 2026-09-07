@@ -281,6 +281,8 @@ class AdminPanel {
             }
             
             this.students = data || [];
+            await this.loadStudentEnrollments();
+            this.studentFilter = this.studentFilter || 'all';
             this.renderStudents();
             
         } catch (error) {
@@ -288,6 +290,141 @@ class AdminPanel {
             this.students = [];
             this.renderStudents();
         }
+    }
+
+    // Builds a per-student enrollment summary (which courses/modules they
+    // own, how much they've paid, free vs. paid) so the student list can
+    // distinguish real buyers from people who just signed up. This is what
+    // was missing before — loadStudents() only ever queried `profiles`.
+    async loadStudentEnrollments() {
+        this.studentEnrollments = {};
+        if (this.students.length === 0) return;
+
+        const [{ data: courseEnrollments }, { data: moduleEnrollments }, { data: courses }] = await Promise.all([
+            supabase.from('user_courses').select('user_id, course_id, payment_status, purchased_price'),
+            supabase.from('user_course_modules').select('user_id, module_id, course_id, payment_status, purchased_price'),
+            supabase.from('courses').select('id, title'),
+        ]);
+
+        const courseTitleById = {};
+        (courses || []).forEach(c => { courseTitleById[c.id] = c.title; });
+
+        const summaryFor = (userId) => (this.studentEnrollments[userId] ||= {
+            courses: [], modules: [], totalSpent: 0, hasPaid: false, hasFree: false,
+        });
+
+        (courseEnrollments || []).forEach(row => {
+            if (row.payment_status !== 'completed') return;
+            const s = summaryFor(row.user_id);
+            s.courses.push({ title: courseTitleById[row.course_id] || 'Unknown course', price: parseFloat(row.purchased_price) || 0 });
+            s.totalSpent += parseFloat(row.purchased_price) || 0;
+            if (parseFloat(row.purchased_price) > 0) s.hasPaid = true; else s.hasFree = true;
+        });
+
+        (moduleEnrollments || []).forEach(row => {
+            if (row.payment_status !== 'completed') return;
+            const s = summaryFor(row.user_id);
+            s.modules.push({ courseTitle: courseTitleById[row.course_id] || 'Unknown course', price: parseFloat(row.purchased_price) || 0 });
+            s.totalSpent += parseFloat(row.purchased_price) || 0;
+            if (parseFloat(row.purchased_price) > 0) s.hasPaid = true; else s.hasFree = true;
+        });
+    }
+
+    setStudentFilter(filter) {
+        this.studentFilter = filter;
+        document.querySelectorAll('.student-filter-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+            btn.style.background = btn.dataset.filter === filter ? '#667eea' : '';
+            btn.style.color = btn.dataset.filter === filter ? '#fff' : '';
+        });
+        this.renderStudents();
+    }
+
+    // Applies both the active filter tab AND (if present) the search box text.
+    getVisibleStudents(searchQuery = '') {
+        const filter = this.studentFilter || 'all';
+        const term = searchQuery.trim().toLowerCase();
+
+        return this.students.filter(student => {
+            const enroll = this.studentEnrollments?.[student.id];
+            const matchesFilter =
+                filter === 'all' ? true :
+                filter === 'buyers' ? !!enroll?.hasPaid :
+                filter === 'free' ? (!!enroll?.hasFree && !enroll?.hasPaid) :
+                filter === 'none' ? !enroll : true;
+
+            const matchesSearch = !term ||
+                student.email.toLowerCase().includes(term) ||
+                (student.subscription_tier && student.subscription_tier.toLowerCase().includes(term));
+
+            return matchesFilter && matchesSearch;
+        });
+    }
+
+    renderStudentCard(student) {
+        const createdDate = new Date(student.created_at).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric'
+        });
+        const updatedDate = student.updated_at
+            ? new Date(student.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'N/A';
+
+        const tierClass = student.subscription_tier === 'premium' ? 'tier-premium' : 'tier-basic';
+        const tierText = student.subscription_tier ? student.subscription_tier.toUpperCase() : 'BASIC';
+
+        const enroll = this.studentEnrollments?.[student.id];
+        let enrollmentBadge;
+        if (!enroll) {
+            enrollmentBadge = `<span class="student-tier" style="background:#999;">👤 No enrollments</span>`;
+        } else {
+            const itemCount = enroll.courses.length + enroll.modules.length;
+            const label = enroll.hasPaid
+                ? `💰 ₹${enroll.totalSpent.toFixed(2)} · ${itemCount} item${itemCount > 1 ? 's' : ''}`
+                : `🎁 Free · ${itemCount} item${itemCount > 1 ? 's' : ''}`;
+            const badgeColor = enroll.hasPaid ? '#2ecc71' : '#f0ad4e';
+            const titles = [...enroll.courses.map(c => c.title), ...enroll.modules.map(m => `${m.courseTitle} (module)`)];
+            enrollmentBadge = `<span class="student-tier" style="background:${badgeColor};" title="${titles.join(', ')}">${label}</span>`;
+        }
+
+        return `
+            <div class="student-item">
+                <div class="student-info">
+                    <h3>${student.email}</h3>
+                    <div class="student-meta">
+                        <span class="student-tier ${tierClass}">${tierText}</span>
+                        ${enrollmentBadge}
+                        <span>Created: ${createdDate}</span>
+                        <span>Updated: ${updatedDate}</span>
+                    </div>
+                </div>
+                <div class="student-actions">
+                    <button class="btn-small" onclick="adminPanel.openGrantAccessModal('${student.email}')">Grant Access</button>
+                    <button class="btn-small" onclick="adminPanel.viewStudentDetails('${student.id}')">View Details</button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderStudents() {
+        const container = document.getElementById('studentsList');
+        if (!container) return;
+
+        const visible = this.getVisibleStudents(document.getElementById('studentSearch')?.value || '');
+
+        if (visible.length === 0) {
+            container.innerHTML = `
+                <div class="placeholder-message">
+                    <p>No students match this view.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = visible.map(student => this.renderStudentCard(student)).join('');
+    }
+
+    searchStudents(query) {
+        this.renderStudents();
     }
 
     // COURSES CRUD OPERATIONS
@@ -899,117 +1036,9 @@ class AdminPanel {
         `).join('');
     }
 
-    // STUDENTS MANAGEMENT
-    renderStudents() {
-        const container = document.getElementById('studentsList');
-        if (!container) return;
-
-        if (this.students.length === 0) {
-            container.innerHTML = `
-                <div class="placeholder-message">
-                    <p>No students found. Students will appear here once they sign up.</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = this.students.map(student => {
-            const createdDate = new Date(student.created_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-            
-            const updatedDate = student.updated_at 
-                ? new Date(student.updated_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                })
-                : 'N/A';
-
-            const tierClass = student.subscription_tier === 'premium' ? 'tier-premium' : 'tier-basic';
-            const tierText = student.subscription_tier ? student.subscription_tier.toUpperCase() : 'BASIC';
-
-            return `
-                <div class="student-item">
-                    <div class="student-info">
-                        <h3>${student.email}</h3>
-                        <div class="student-meta">
-                            <span class="student-tier ${tierClass}">${tierText}</span>
-                            <span>Created: ${createdDate}</span>
-                            <span>Updated: ${updatedDate}</span>
-                        </div>
-                    </div>
-                    <div class="student-actions">
-                        <button class="btn-small" onclick="adminPanel.openGrantAccessModal('${student.email}')">Grant Access</button>
-                        <button class="btn-small" onclick="adminPanel.viewStudentDetails('${student.id}')">View Details</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    searchStudents(query) {
-        const container = document.getElementById('studentsList');
-        if (!container) return;
-
-        if (!query.trim()) {
-            this.renderStudents();
-            return;
-        }
-
-        const searchTerm = query.toLowerCase();
-        const filteredStudents = this.students.filter(student => 
-            student.email.toLowerCase().includes(searchTerm) ||
-            (student.subscription_tier && student.subscription_tier.toLowerCase().includes(searchTerm))
-        );
-
-        if (filteredStudents.length === 0) {
-            container.innerHTML = `
-                <div class="placeholder-message">
-                    <p>No students found matching "${query}"</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = filteredStudents.map(student => {
-            const createdDate = new Date(student.created_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-            
-            const updatedDate = student.updated_at 
-                ? new Date(student.updated_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                })
-                : 'N/A';
-
-            const tierClass = student.subscription_tier === 'premium' ? 'tier-premium' : 'tier-basic';
-            const tierText = student.subscription_tier ? student.subscription_tier.toUpperCase() : 'BASIC';
-
-            return `
-                <div class="student-item">
-                    <div class="student-info">
-                        <h3>${student.email}</h3>
-                        <div class="student-meta">
-                            <span class="student-tier ${tierClass}">${tierText}</span>
-                            <span>Created: ${createdDate}</span>
-                            <span>Updated: ${updatedDate}</span>
-                        </div>
-                    </div>
-                    <div class="student-actions">
-                        <button class="btn-small" onclick="adminPanel.openGrantAccessModal('${student.email}')">Grant Access</button>
-                        <button class="btn-small" onclick="adminPanel.viewStudentDetails('${student.id}')">View Details</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
+    // STUDENTS MANAGEMENT — see renderStudentCard()/renderStudents()/searchStudents()
+    // defined earlier, right after loadStudents(). (Old duplicate implementations
+    // removed from here — they're superseded by the enrollment-aware versions.)
 
     viewStudentDetails(studentId) {
         const student = this.students.find(s => s.id === studentId);

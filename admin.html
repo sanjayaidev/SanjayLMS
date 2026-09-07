@@ -153,6 +153,13 @@
                 </div>
             </div>
 
+            <div class="student-filter-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <button class="btn-small student-filter-tab active" data-filter="all" onclick="adminPanel.setStudentFilter('all')">All</button>
+                <button class="btn-small student-filter-tab" data-filter="buyers" onclick="adminPanel.setStudentFilter('buyers')">💰 Paying Customers</button>
+                <button class="btn-small student-filter-tab" data-filter="free" onclick="adminPanel.setStudentFilter('free')">🎁 Free Enrollments</button>
+                <button class="btn-small student-filter-tab" data-filter="none" onclick="adminPanel.setStudentFilter('none')">👤 Signed Up, No Course</button>
+            </div>
+
             <div class="students-list" id="studentsList">
                 <div class="placeholder-message">
                     <p>Student data will appear here once users start signing up.</p>
