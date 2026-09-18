@@ -1148,6 +1148,16 @@ body.menu-open {
     padding: 1rem 0;
 }
 
+.main-header + .video-page-layout,
+.main-header + .course-detail-page,
+.main-header + .courses-header {
+    margin-top: 80px;
+}
+
+.main-header + .video-page-layout {
+    padding-top: 2rem;
+}
+
 .header-content {
     max-width: 1400px;
     margin: 0 auto;
@@ -1805,6 +1815,16 @@ body.menu-open {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .main-header + .video-page-layout,
+    .main-header + .course-detail-page,
+    .main-header + .courses-header {
+        margin-top: 96px;
+    }
+
+    .main-header + .video-page-layout {
+        padding-top: 1rem;
     }
     
     .courses-grid {

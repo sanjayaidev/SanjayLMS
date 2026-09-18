@@ -948,6 +948,20 @@ header nav {
     }
 }
 
+#courseModal,
+#modulesView {
+    z-index: 2000;
+}
+
+#moduleModal,
+#downloadModal {
+    z-index: 2200;
+}
+
+#lessonModal {
+    z-index: 2300;
+}
+
 body.admin-page {
     background: var(--dark);
     color: var(--light);
